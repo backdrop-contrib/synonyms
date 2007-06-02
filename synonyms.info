@@ -1,0 +1,4 @@
+; $Id $
+name = Synonyms
+description = Allow term synonyms to be used by the search module.
+version = "$Name$"
