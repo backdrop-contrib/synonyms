@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Implementattion of hook_nodeapi
  * This hook loads when Drupal starts updating it's search index for a node.
