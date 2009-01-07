@@ -8,24 +8,29 @@
 
 function synonyms_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
   if ($op == 'update index') {
-    $text = array();
+    // Check if it's a node and if there are any taxonomy terms.
+    if ($node->nid > 0 && !empty($node->taxonomy)) {
+        $text = array();
+        $getTerms = $node->taxonomy;
 
-    $getTerms = taxonomy_node_get_terms($node->nid);
-    foreach($getTerms as $nodeTerm) {
-        $childSynonyms = taxonomy_get_synonyms($nodeTerm->tid);
-        foreach($childSynonyms as $childSynonym){
-            $text[] = $childSynonym;
-        }
-        $parents = taxonomy_get_parents($nodeTerm->tid);
-        foreach($parents as $parent) {
-            $text[] = $parent->name;
-            $synonyms = taxonomy_get_synonyms($parent->tid);
-            foreach($synonyms as $synonym){
-                $text[] = $synonym;
+        foreach($getTerms as $nodeTerm) {
+            $childSynonyms = taxonomy_get_synonyms($nodeTerm->tid);
+            foreach($childSynonyms as $childSynonym){
+                $text[] = $childSynonym;
+            }
+            $parents = taxonomy_get_parents($nodeTerm->tid);
+            foreach($parents as $parent) {
+                $text[] = $parent->name;
+                $synonyms = taxonomy_get_synonyms($parent->tid);
+                foreach($synonyms as $synonym){
+                    $text[] = $synonym;
+                }
             }
         }
-    }
 
-  return '<strong>('. implode(', ', $text) .')</strong>';
+        return '<strong>('. implode(', ', $text) .')</strong>';
+    } else {
+        return false;
+    }
   }
 }

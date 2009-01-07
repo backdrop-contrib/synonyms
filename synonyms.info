@@ -1,4 +1,5 @@
 ; $Id $
 name = Synonyms
 description = Allow term synonyms to be used by the search module.
-
+core = 6.x
+dependencies[] = taxonomy
