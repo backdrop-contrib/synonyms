@@ -1,5 +1,8 @@
 ; $Id $
 name = Synonyms
-description = Allow term synonyms to be used by the search module.
-core = 6.x
+description = Define synonyms for taxonomy terms that can be used by the search module.
+core = "7.x"
+package = Taxonomy
 dependencies[] = taxonomy
+files[] = synonyms.module
+files[] = synonyms.install
