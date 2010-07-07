@@ -15,7 +15,7 @@
 function synonyms_taxonomy_vocabulary_insert($vocabulary) {
   $instance = array(
     'field_name' => 'synonyms_synonym',
-    'object_type' => 'taxonomy_term',
+    'entity_type' => 'taxonomy_term',
     'bundle' => $vocabulary->machine_name,
     'label' => t('Synonyms for this term'),
   );
