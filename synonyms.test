@@ -32,6 +32,7 @@ class SynonymsWebTestCase extends DrupalWebTestCase {
    *
    * @param object $vocabulary
    *   Fully loaded taxonomy vocabulary object
+   *
    * @return object
    *   Fully loaded taxonomy term object of the last interted term into
    *     the specified vocabulary
@@ -228,7 +229,7 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     // Testing synonyms_add_term_by_synonym() function.
     $tid = synonyms_add_term_by_synonym(drupal_strtolower($name), $this->vocabularies['enabled'], $term_parent->tid);
     $this->assertEqual($tid, $term->tid, 'Successfully called synonyms_add_term_by_synonym() on an existing title and no new term was created after disabling "synonyms" feature.');
-    $tid = synonyms_add_term_by_synonym(drupal_strtolower($synonym), $this->vocabularies['enabled'],  $term_parent->tid);
+    $tid = synonyms_add_term_by_synonym(drupal_strtolower($synonym), $this->vocabularies['enabled'], $term_parent->tid);
     $new_term = taxonomy_term_load($tid);
     $new_term_parents = array_keys(taxonomy_get_parents($new_term->tid));
     $this->assertFalse(in_array($new_term->tid, array($term->tid, $term_parent->tid)), 'Successfully called synonyms_add_term_by_synonym() using previous synonym and a new term was created (because the vocabulary has disabled "synonyms" feature)');
@@ -808,7 +809,10 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     $assertions[] = array(
       'vocabulary' => 'enabled',
       'input' => 'one_term_name_another_synonym_',
-      'response' => array($terms['name_another_synonym']->name => $terms['name_another_synonym']->name, $terms['synonym_another_name']->name => $this->synonymAutocompleteResult($terms['synonym_another_name'], $terms['synonym_another_name']->synonyms_synonyms[LANGUAGE_NONE][0]['safe_value'])),
+      'response' => array(
+        $terms['name_another_synonym']->name => $terms['name_another_synonym']->name,
+        $terms['synonym_another_name']->name => $this->synonymAutocompleteResult($terms['synonym_another_name'], $terms['synonym_another_name']->synonyms_synonyms[LANGUAGE_NONE][0]['safe_value']),
+      ),
       'message' => 'Submitting a keyword similar to name of one term and synonym of another into an enabled synonyms vocabulary yields both included in the results',
     );
 
@@ -825,8 +829,8 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    *     vocabulary - machine name of vocabulary whose field is asserted
    *     input - input string to be fed to autocomplete menu path
    *     response - JSON decoded expected response of autocomplete menu path
-   *     message - Drupal assertion message to be displayed on test results 
-   *                 page 
+   *     message - Drupal assertion message to be displayed on test results
+   *                 page
    */
   protected function assertAutocompleteMenuPath($assertion) {
     $response = $this->drupalGet('synonyms/autocomplete/field_synonyms_term_' . $assertion['vocabulary'] . '/' . $assertion['input']);
@@ -850,6 +854,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    *   Fully loaded taxonomy term object for which the result is generated.
    * @param string $synonym
    *   Synonym by which the term was hit in the search
+   *
    * @return string
    *   Formatted autocomplete result
    */
@@ -928,7 +933,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
    * that term to be included in search results.
    */
   public function testSearchTermSynonym() {
-    // Create a few terms and synonyms
+    // Create a few terms and synonyms.
     $terms = array();
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $this->randomName(),
@@ -988,8 +993,8 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
    *   Specially encoded array of assertion. Should include the follwing keys:
    *     keyword - what keyword has to be supplied to the search mechanism
    *     results - array of nodes that are expected to be on search results
-   *     message - Drupal assertion message to be displayed on test results 
-   *                 page 
+   *     message - Drupal assertion message to be displayed on test results
+   *                 page
    */
   protected function assertSearchResults($assertion) {
     $response = $this->drupalGet('search/node/' . $assertion['keyword']);

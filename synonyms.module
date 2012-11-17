@@ -21,7 +21,7 @@ function synonyms_menu() {
     'type' => MENU_LOCAL_TASK,
     'weight' => 10,
   );
-  
+
   $items['synonyms/autocomplete'] = array(
     'title' => 'Autocomplete Synonyms',
     'page callback' => 'synonyms_autocomplete',
@@ -243,7 +243,7 @@ function synonyms_taxonomy_form_vocabulary_submit($form, &$form_state) {
       // up by the just submitted machine name.
       $vocabulary = taxonomy_vocabulary_machine_name_load($values['machine_name']);
     }
-  
+
     $settings = synonyms_vocabulary_settings($vocabulary);
     $settings = $values['synonyms'] + $settings;
     synonyms_vocabulary_settings_save($vocabulary, $settings);
@@ -260,9 +260,9 @@ function synonyms_taxonomy_form_vocabulary_submit($form, &$form_state) {
  * Term names containing commas are wrapped in quotes. The search is made
  * with consideration of synonyms.
  *
- * @param $field_name
+ * @param string $field_name
  *   The name of the term reference field.
- * @param $tags_typed
+ * @param string $tags_typed
  *   (optional) A comma-separated list of term names entered in the
  *   autocomplete form element. Only the last term is used for autocompletion.
  *   Defaults to '' (an empty string).
@@ -274,7 +274,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
   // Shift off the $field_name argument.
   array_shift($args);
   $tags_typed = implode('/', $args);
-  
+
   // Make sure the field exists and is a taxonomy field.
   if (!($field = field_info_field($field_name)) || $field['type'] !== 'taxonomy_term_reference') {
     // Error string. The JavaScript handler will realize this is not JSON and
@@ -283,10 +283,11 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     exit;
   }
   
-  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  // The user enters a comma-separated list of tags. We only autocomplete the
+  // last tag.
   $tags_typed = drupal_explode_tags($tags_typed);
   $tag_last = drupal_strtolower(array_pop($tags_typed));
-  
+
   $term_matches = array();
   if ($tag_last != '') {
     // Part of the criteria for the query come from the field's own settings.
@@ -315,7 +316,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
       ->execute()
       ->fetchAllKeyed();
 
-    // Converting results into another format
+    // Converting results into another format.
     foreach ($tags_return as $tid => $name) {
       $tags_return[$tid] = array('name' => $name);
     }
@@ -323,7 +324,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', 'taxonomy_term')
       ->entityCondition('bundle', array_values($vocabularies))
-      ->fieldCondition('synonyms_synonyms', 'value', '%'. $tag_last .'%', 'LIKE');
+      ->fieldCondition('synonyms_synonyms', 'value', '%' . $tag_last . '%', 'LIKE');
     if (!empty($tags_typed)) {
       $query->propertyCondition('name', $tags_typed, 'NOT IN');
     }
@@ -872,7 +873,7 @@ function synonyms_vocabulary_settings_save($vocabulary, $settings) {
 
 /**
  * Make sure the synonyms_synonyms field exists.
- * 
+ *
  * If the field doesn't exist function creates one, if the field exists,
  * the function does nothing.
  */
