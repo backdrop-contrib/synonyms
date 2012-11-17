@@ -1,8 +1,8 @@
-; $Id $
 name = Synonyms
-description = Define synonyms for taxonomy terms that can be used by the search module.
-core = "7.x"
+description = "Provides synonyms feature for working with Drupal Taxonomy"
 package = Taxonomy
+core = 7.x
 dependencies[] = taxonomy
-files[] = synonyms.module
-files[] = synonyms.install
+dependencies[] = text
+
+files[] = synonyms.test
