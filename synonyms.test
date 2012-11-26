@@ -318,6 +318,10 @@ class TermMergeSynonymsWebTestCase extends SynonymsWebTestCase {
    * Test merging two terms.
    */
   public function testTermMerge() {
+    // Enabling "synonyms" feature for the vocabulary.
+    $this->drupalPost('admin/structure/taxonomy/enabled/edit', array(
+      'synonyms[synonyms]' => TRUE,
+    ), 'Save');
     // Attaching fields to taxonomy terms.
     $bundle = field_extract_bundle('taxonomy_term', $this->vocabularies['enabled']);
     $fields_map = array(
@@ -392,15 +396,15 @@ class TermMergeSynonymsWebTestCase extends SynonymsWebTestCase {
     foreach ($fields_map as $field_name => $cardinality) {
       switch ($cardinality) {
         case 1:
-          $this->assertText($terms['trunk']->{$field_name}['und'][0]['value'], 'Single Field of trunk is found.');
-          $this->assertNoText($terms['branch']->{$field_name}['und'][0]['value'], 'Single Field of branch is not found.');
+          $this->assertText($terms['trunk']->{$field_name}[LANGUAGE_NONE][0]['value'], 'Single Field of trunk is found.');
+          $this->assertNoText($terms['branch']->{$field_name}[LANGUAGE_NONE][0]['value'], 'Single Field of branch is not found.');
           break;
 
         case FIELD_CARDINALITY_UNLIMITED:
           foreach (array('trunk', 'branch') as $term_type) {
             $term = $terms[$term_type];
             if (!empty($term->{$field_name})) {
-              foreach ($term->{$field_name}['und'] as $delta => $item) {
+              foreach ($term->{$field_name}[LANGUAGE_NONE] as $delta => $item) {
                 $this->assertText($item['value'], 'Multiple Field of ' . $term_type . ' delta ' . $delta . ' is found.');
               }
             }
@@ -408,6 +412,9 @@ class TermMergeSynonymsWebTestCase extends SynonymsWebTestCase {
           break;
       }
     }
+    // Separately we make sure that the title of branch term has become a
+    // synonym of the trunk term.
+    $this->assertText($terms['branch']->name, 'The title of ranch term has become a synonym of the trunk term.');
 
     // And lastly we make sure that the child's parent became "trunk".
     $parents = taxonomy_get_parents($terms['branch_child']->tid);

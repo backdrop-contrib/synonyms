@@ -282,7 +282,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     print t('Taxonomy field @field_name not found.', array('@field_name' => $field_name));
     exit;
   }
-  
+
   // The user enters a comma-separated list of tags. We only autocomplete the
   // last tag.
   $tags_typed = drupal_explode_tags($tags_typed);
@@ -296,7 +296,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     foreach ($field['settings']['allowed_values'] as $tree) {
       $vocabularies[$tmp[$tree['vocabulary']]->vid] = $tree['vocabulary'];
     }
-    
+
     $tid_potential = array();
     // Firstly getting a list of tids that matched by $term->name.
     $query = db_select('taxonomy_term_data', 't');
@@ -645,12 +645,20 @@ function synonyms_term_merge_action($object, $context) {
       $term_trunk->{$instance['field_name']}[$language] = array_merge($term_trunk->{$instance['field_name']}[$language], $term_branch->{$instance['field_name']}[$language]);
     }
   }
+
+  // Separately we take care of the case when the "synonyms" feature is enabled
+  // for this vocabulary. We put title of the branch term as a synonym for the
+  // trunk term.
+  if ($settings['synonyms']) {
+    $term_trunk->synonyms_synonyms[LANGUAGE_NONE][] = array('value' => $term_branch->name);
+  }
+
   // And now we can save $term_trunk after shifting all the fields from
   // $term_branch.
   taxonomy_term_save($term_trunk);
 
   // Updating all the links to $term_branch to point now to $term_trunk
-  // firstly we get through the list of all fields searching for
+  // firstly we go through the list of all fields searching for
   // taxonomy_term_reference type because potentially some of these fields
   // values will have to be updated after merging terms.
   $fields = field_info_fields();
