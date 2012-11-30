@@ -9,7 +9,10 @@
  * Implements hook_uninstall().
  */
 function synonyms_uninstall() {
-  field_delete_field('synonyms_synonyms');
+  // We reply on the constant defined in the main module's file.
+  // So we include it.
+  drupal_load('module', 'synonyms');
+  field_delete_field(SYNONYMS_DEFAULT_FIELD_NAME);
   // Cleaning all configure variables.
   $results = db_select('variable', 'var')
     ->fields('var', array('name'))
