@@ -826,6 +826,11 @@ function synonyms_term_merge_action($object, $context) {
  */
 function synonyms_synonyms_fields($vocabulary) {
   $settings = synonyms_vocabulary_settings($vocabulary);
+  if (!isset($settings['synonyms']) || !is_array($settings['synonyms'])) {
+    // Wierd as normally we expect to see here at least an empty array but
+    // no problem. We simply initialize it.
+    $settings['synonyms'] = array();
+  }
 
   // It's not just as easy as pulling up already saved value. After this
   // we have to make sure that all the fields are still present and have not
