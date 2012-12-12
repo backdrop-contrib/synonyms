@@ -6,3 +6,7 @@ dependencies[] = taxonomy
 dependencies[] = text
 
 files[] = synonyms.test
+files[] = includes/AbstractSynonymsExtractor.class.inc
+files[] = includes/SynonymsSynonymsExtractor.class.inc
+files[] = includes/TaxonomySynonymsExtractor.class.inc
+files[] = includes/EntityReferenceSynonymsExtractor.class.inc

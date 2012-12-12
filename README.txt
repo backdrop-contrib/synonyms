@@ -11,7 +11,7 @@ the module provides this additional functionality:
 
 -- REQUIREMENTS --
 
-The Taxonomy Extra module requires enabled:
+The Synonyms module requires enabled:
 * Taxonomy module
 * Text module
 
@@ -25,5 +25,5 @@ The Taxonomy Extra module requires enabled:
 
 * The module itself does not provide any configuration as of the moment.
 Although during creation/editing of a Taxonomy vocabulary you will be able
-to enable/disable for that particular vocabulary the additional 
-functionality this module provides.
+to enable/disable for that particular vocabulary the additional functionality
+this module provides.
