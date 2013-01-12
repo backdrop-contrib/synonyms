@@ -7,11 +7,11 @@
 
 class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
 
-  public function fieldTypesSupported() {
+  static public function fieldTypesSupported() {
     return array('taxonomy_term_reference');
   }
 
-  public function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
+  static public function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
 
     $terms = array();
@@ -25,7 +25,7 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     return $synonyms;
   }
 
-  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
+  static public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     // Unfortunately EntityFieldQuery does not currently support INNER JOINing
     // term entity that is referenced via taxonomy_term_reference field type.
     // Thus, we use an ugly solution -- going through all terms that exist in
@@ -50,7 +50,7 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     if (empty($tids)) {
       // No possible suggestions were found. We have to make sure $query yields
       // no results.
-      $this->emptyResultsCondition($query);
+      self::emptyResultsCondition($query);
       return;
     }
     $query->fieldCondition($field, 'tid', $tids);

@@ -7,11 +7,11 @@
 
 class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
 
-  public function fieldTypesSupported() {
+  static public function fieldTypesSupported() {
     return array('entityreference');
   }
 
-  public function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
+  static public function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
 
     // For speading up loading all the entities at once.
@@ -27,13 +27,13 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
     return $synonyms;
   }
 
-  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
+  static public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     // Unfortunately EntityFieldQuery does not currently support INNER JOINing
     // referenced entities via any field type.
     // Thus, we use an ugly solution -- going through all entities that exist
     // in such entity type trying to see if there is a match by entity's label.
-    $efd = new EntityFieldQuery();
-    $efd->entityCondition('entity_type', $field['settings']['target_type']);
+    $efq = new EntityFieldQuery();
+    $efq->entityCondition('entity_type', $field['settings']['target_type']);
     // Additionally we have to figure out which column in the entity table
     // represents entity label.
     $entity_info = entity_get_info($field['settings']['target_type']);
@@ -41,14 +41,14 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
       // We can't get any matches if we do not know what column to query
       // against. So we add a condition to $query which will 100% yield empty
       // results.
-      $this->emptyResultsCondition($query);
+      self::emptyResultsCondition($query);
       return;
     }
-    $efd->propertyCondition($entity_info['entity keys']['label'], '%' . $tag . '%', 'LIKE');
-    $result = $efd->execute();
+    $efq->propertyCondition($entity_info['entity keys']['label'], '%' . $tag . '%', 'LIKE');
+    $result = $efq->execute();
 
     if (!isset($result[$field['settings']['target_type']]) || !is_array($result[$field['settings']['target_type']])) {
-      $this->emptyResultsCondition($query);
+      self::emptyResultsCondition($query);
       return;
     }
     $result = $result[$field['settings']['target_type']];
