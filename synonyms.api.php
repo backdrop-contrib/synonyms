@@ -34,6 +34,8 @@ function hook_synonyms_extractor_info() {
 class ApiSynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
 
   /**
+   * Return array of supported field types for synonyms extraction.
+   *
    * @return array
    *   Array of Field API field types from which this class is able to extract
    *   synonyms

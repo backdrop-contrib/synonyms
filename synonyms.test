@@ -138,15 +138,15 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $no_synonyms_term = $this->getLastTerm($this->vocabularies['enabled']);
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][0][value]' => $synonym1,
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym1,
     ), 'Save');
     $one_synonym_term = $this->getLastTerm($this->vocabularies['enabled']);
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][0][value]' => $synonym1,
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym1,
     ), 'Add another item');
     $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][1][value]' => $synonym2,
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $synonym2,
     ), 'Save');
     $two_synonyms_term = $this->getLastTerm($this->vocabularies['enabled']);
 
@@ -155,17 +155,17 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $name,
       'description[value]' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][0][value]' => $synonym,
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym,
     ), 'Add another item');
     $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][1][value]' => $parent_synonym,
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $parent_synonym,
     ), 'Save');
     $term_parent = $this->getLastTerm($this->vocabularies['enabled']);
 
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $name,
       'description[value]' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][0][value]' => $synonym,
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym,
       'parent[]' => array($term_parent->tid),
     ), 'Save');
 
@@ -651,7 +651,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
     $terms['one_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE .'][0][value]' => $this->randomName(),
+      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $this->randomName(),
     ), 'Add another item');
     $this->drupalPost(NULL, array(
       SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $this->randomName(),
@@ -758,9 +758,9 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
   /**
    * SetUp method.
    *
-   * @param string
+   * @param string $class
    *   Name of class that is being tested
-   * @param array
+   * @param array $modules
    *   Array of extra modules to install for testing a particular synonyms
    *   extractor
    */
@@ -784,9 +784,9 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
    * instance and relate it to our tested vocabulary. Lastly enable this field
    * as a source of synonyms for our tested vocabulary.
    *
-   * @param $field
+   * @param array $field
    *   Field definition array as expected by Field API
-   * @param $instance
+   * @param array $instance
    *   Instance defintion array as expected by Field API
    */
   protected function addFieldInstance($field, $instance) {
@@ -929,8 +929,8 @@ class SynonymsSynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
   }
 
   /**
- * Test synonyms extraction for 'text' field type.
- */
+   * Test synonyms extraction for 'text' field type.
+   */
   public function testText() {
     $this->addFieldInstance(array(
       'field_name' => 'text',
@@ -949,7 +949,7 @@ class SynonymsSynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
     $synonym = $this->randomName();
     $this->assertSynonymsExtract(array(
       LANGUAGE_NONE => array(
-        0 => array('value' => $synonym)
+        0 => array('value' => $synonym),
       ),
     ), array($synonym), 'on a field that holds one value.');
 
@@ -1004,7 +1004,7 @@ class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
    *
    * @var object
    */
-  protected $vocabulary_source;
+  protected $vocabularySource;
 
   /**
    * GetInfo method.
@@ -1022,11 +1022,11 @@ class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
    */
   public function setUp() {
     parent::setUp('TaxonomySynonymsExtractor');
-    $this->vocabulary_source = (object) array(
+    $this->vocabularySource = (object) array(
       'name' => $this->randomName(),
       'machine_name' => 'source_vocabulary',
     );
-    taxonomy_vocabulary_save($this->vocabulary_source);
+    taxonomy_vocabulary_save($this->vocabularySource);
   }
 
   /**
@@ -1040,7 +1040,7 @@ class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
       'settings' => array(
         'allowed_values' => array(
           array(
-            'vocabulary' => $this->vocabulary_source->machine_name,
+            'vocabulary' => $this->vocabularySource->machine_name,
             'parent' => 0,
           ),
         ),
@@ -1060,13 +1060,12 @@ class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
       LANGUAGE_NONE => array(
         0 => array(
           'tid' => $synonym_term->tid,
-        )
+        ),
       ),
     ), array($synonym_term->name), 'on a field that holds one value.');
 
     // Testing processEntityFieldQuery().
     $this->assertProcessEntityFieldQuery(array(), $this->randomName(), 'on empty field.');
-
 
     $tag = $this->randomName();
     $meta_data = array();
@@ -1117,7 +1116,7 @@ class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
     }
     $synonym_term = (object) array(
       'name' => $name,
-      'vid' => $this->vocabulary_source->vid,
+      'vid' => $this->vocabularySource->vid,
     );
     taxonomy_term_save($synonym_term);
     return $synonym_term;
@@ -1180,7 +1179,7 @@ class EntityReferenceSynonymsExtractorWebTestCase extends AbstractSynonymsExtrac
       LANGUAGE_NONE => array(
         0 => array(
           'target_id' => entity_id('node', $synonym_entity),
-        )
+        ),
       ),
     ), array(entity_label('node', $synonym_entity)), 'on a field that holds one value.');
 

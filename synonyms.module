@@ -624,7 +624,7 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
   $items = field_get_items($trunk_entity_type, $trunk_entity, $field['field_name']);
   $items = is_array($items) ? $items : array();
   $trunk_entity_ids = entity_extract_ids($trunk_entity_type, $trunk_entity);
-  $instance =  field_info_instance($trunk_entity_type, $field['field_name'], $trunk_entity_ids[2]);
+  $instance = field_info_instance($trunk_entity_type, $field['field_name'], $trunk_entity_ids[2]);
 
   $extra_items = $extractor::mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
 
