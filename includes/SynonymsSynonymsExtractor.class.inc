@@ -24,4 +24,25 @@ class SynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
   static public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     $query->fieldCondition($field, 'value', '%' . $tag . '%', 'LIKE');
   }
+
+  static public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+    $synonym = entity_label($synonym_entity_type, $synonym_entity);
+    switch ($field['type']) {
+      case 'text':
+        break;
+
+      // We add synonyms for numbers only if $synonym is a number.
+      case 'number_integer':
+      case 'number_float':
+      case 'number_decimal':
+        if (!is_numeric($synonym)) {
+          return array();
+        }
+        break;
+
+    }
+    return array(array(
+      'value' => $synonym,
+    ));
+  }
 }

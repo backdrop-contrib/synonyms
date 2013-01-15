@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Enables Entity Reference field types to be source of synonyms.
+ * Enables Entity Reference field type to be source of synonyms.
  */
 
 class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
@@ -53,6 +53,19 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
     }
     $result = $result[$field['settings']['target_type']];
     $query->fieldCondition($field, 'target_id', array_keys($result));
+  }
+
+  static public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+    // Firstly validating that this entity refernce is able to reference to that
+    // type of entity.
+    $expected_synonym_entity_type = $field['settings']['target_type'];
+    if ($expected_synonym_entity_type != $synonym_entity_type) {
+      return array();
+    }
+    $synonym_entity_id = entity_id($synonym_entity_type, $synonym_entity);
+    return array(array(
+      'target_id' => $synonym_entity_id,
+    ));
   }
 
 }

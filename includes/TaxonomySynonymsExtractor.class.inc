@@ -55,4 +55,40 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     }
     $query->fieldCondition($field, 'tid', $tids);
   }
+
+  static public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+    // Taxonomy term reference supports only referencing of entity types
+    // 'taxonomy_term'.. duh.
+    if ($synonym_entity_type != 'taxonomy_term') {
+      return array();
+    }
+    // Checking that $field is configured to reference the vocabulary of
+    // $synonym_entity term.
+    $is_allowed = FALSE;
+    foreach ($field['settings']['allowed_values'] as $setting) {
+      if ($synonym_entity->vocabulary_machine_name == $setting['vocabulary']) {
+        if ($setting['parent'] == 0) {
+          // No need to check parent property as there is no limitation on it.
+          $is_allowed = TRUE;
+          break;
+        }
+        else {
+          foreach (taxonomy_get_parents_all($synonym_entity->tid) as $parent) {
+            if ($parent->tid == $setting['parent']) {
+              $is_allowed = TRUE;
+              break(2);
+            }
+          }
+        }
+      }
+    }
+    if (!$is_allowed) {
+      // Synonym term is from a vocabulary that is not expected by this field,
+      // or under unexpected parent.
+      return array();
+    }
+    return array(array(
+      'tid' => $synonym_entity->tid,
+    ));
+  }
 }

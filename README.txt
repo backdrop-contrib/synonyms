@@ -3,20 +3,19 @@
 
 The Synonyms module extends the Drupal core Taxonomy features. Currently
 the module provides this additional functionality:
-* support of synonyms. Any field attached to term can be enabled as source of
-   synonyms. Please, see below for the list of field types currently supported
-   for extraction.
+* support of synonyms through Field API. Any field, for which synonyms extractor
+   is created, attached to a term can be enabled as source of synonyms.
 * synonym-friendly autocomplete widget for taxonomy_term_reference fields
 * integration with Drupal search functionality enabling searching content by
    synonyms of the terms that the content references
 
 -- REQUIREMENTS --
 
-The Synonyms module requires enabled:
+The Synonyms module requires the following modules:
 * Taxonomy module
 * Text module
 
--- SYNONYMS SOURCE FIELDS (API) --
+-- SYNONYMS EXTRACTORS, SUPPORTED FIELD TYPES --
 
 Module ships with ability to extract synonyms from the following field types:
 * Text
@@ -42,4 +41,13 @@ into this module.
 * The module itself does not provide any configuration as of the moment.
 Although during creation/editing of a Taxonomy vocabulary you will be able
 to enable/disable for that particular vocabulary the additional functionality
-this module provides.
+this module provides, you will find additional fieldset at the bottom of
+vocabulary edit page.
+
+-- FUTURE DEVELOPMENT --
+
+* If you are interested into converting this module from synonyms for Taxonomy
+terms into synonyms for any entity types, please go to this issue
+http://drupal.org/node/1194802 and leave a comment. Once we see some demand for
+this great feature and the Synonyms module gets a little more mature, we will
+try to make it happen.

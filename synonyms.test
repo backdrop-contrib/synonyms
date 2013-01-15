@@ -39,7 +39,7 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
    *
    * @return object
    *   Fully loaded taxonomy term object of the last interted term into
-   *     the specified vocabulary
+   *   the specified vocabulary
    */
   protected function getLastTerm($vocabulary) {
     drupal_static_reset();
@@ -877,6 +877,32 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
       taxonomy_term_delete($term->tid);
     }
   }
+
+  /**
+   * Test mergeEntityAsSynonym method of class.
+   *
+   * @param array $items
+   *   Parameter will be passed directly to the extractor class method
+   * @param object $synonym_entity
+   *   Parameter will be passed directly to the extractor class method
+   * @param string $synonym_entity_type
+   *   Parameter will be passed directly to the extractor class method
+   * @param array $etalon
+   *   Array that is expected to be returned by the tested method
+   * @param string $message
+   *   Any custom message to be added to the standard one and passed to
+   *   SimpleTest assertion method
+   */
+  protected function assertMergeEntityAsSynonym($items, $synonym_entity, $synonym_entity_type, $etalon, $message = '') {
+    $extra_items = call_user_func($this->extractor . '::mergeEntityAsSynonym', $items, $this->field, $this->instance, $synonym_entity, $synonym_entity_type);
+    foreach ($etalon as $k => $v) {
+      if (count(array_intersect($etalon[$k], $extra_items[$k])) != count($etalon[$k])) {
+        $this->fail('Synonyms Extractor ' . $this->extractor . ' passed mergeEntityAsSynonym() method: ' . $message);
+        return;
+      }
+    }
+    $this->pass('Synonyms Extractor ' . $this->extractor . ' passed mergeEntityAsSynonym() method: ' . $message);
+  }
 }
 
 /**
@@ -954,6 +980,14 @@ class SynonymsSynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
       'expected' => FALSE,
     );
     $this->assertProcessEntityFieldQuery($meta_data, $tag, 'on a field with values.');
+
+    // Testing mergeEntityAsSynonym() method.
+    $node = (object) array(
+      'title' => $this->randomName(),
+      'type' => 'page',
+    );
+    node_save($node);
+    $this->assertMergeEntityAsSynonym(array(), $node, 'node', array(array('value' => $node->title)), 'on a node entity.');
   }
 
 }
@@ -1058,6 +1092,10 @@ class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
       'expected' => FALSE,
     );
     $this->assertProcessEntityFieldQuery($meta_data, $tag, 'on a field with values.');
+
+    // Testing mergeEntityAsSynonym() method.
+    $synonym_term = $this->createSynonymTerm();
+    $this->assertMergeEntityAsSynonym(array(), $synonym_term, 'taxonomy_term', array(array('tid' => $synonym_term->tid)), 'on a term from referenced vocabulary.');
   }
 
   /**
@@ -1177,6 +1215,10 @@ class EntityReferenceSynonymsExtractorWebTestCase extends AbstractSynonymsExtrac
       'expected' => FALSE,
     );
     $this->assertProcessEntityFieldQuery($meta_data, $tag, 'on a field with values.');
+
+    // Testing mergeEntityAsSynonym() method.
+    $node = $this->createNode();
+    $this->assertMergeEntityAsSynonym(array(), $node, 'node', array(array('target_id' => $node->nid)), 'on a node.');
   }
 
   /**

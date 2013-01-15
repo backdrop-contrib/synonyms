@@ -28,8 +28,8 @@ function hook_synonyms_extractor_info() {
  *
  * This is a copy of SynonymsSynonymsExtractor class providing an example of
  * how to write your own synonyms extractor class. See the definition of
- * AbstractSynonymsExtractor for reference and code comments. For more
- * complicated examples look at EntityReferenceSynonymsExtractor class.
+ * AbstractSynonymsExtractor for reference and incode comments. For more
+ * complicated examples take a look at EntityReferenceSynonymsExtractor class.
  */
 class ApiSynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
 
@@ -96,5 +96,57 @@ class ApiSynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
    */
   static public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     $query->fieldCondition($field, 'value', '%' . $tag . '%', 'LIKE');
+  }
+
+  /**
+   * Add an entity as a synonym into a field of another entity.
+   *
+   * Basically this method should be called when you want to add some entity
+   * as a synonym to another entity (for example when you merge one entity
+   * into another and besides merging want to add synonym of the merging
+   * entity into the trunk entity). You should extract synonym value (according
+   * to what value is expected in this field) and return it. We try to provide
+   * you with as much context as possible, but normally you would only need
+   * $synonym_entity and $synonym_entity_type parameters. Return an empty array
+   * if entity of type $synonym_entity_type cannot be converted into a format
+   * expected by $field.
+   *
+   * @param array $items
+   *   Array items that already exist in the field into which new synonyms is to
+   *   be added
+   * @param array $field
+   *   Field array definition according to Field API of the field into which new
+   *   synonym is to be added
+   * @param array $instance
+   *   Instance array definition according to Field API of the instance into
+   *   which new synonym is to be added
+   * @param object $synonym_entity
+   *   Fully loaded entity object which has to be added as synonym
+   * @param string $synonym_entity_type
+   *   Entity type of $synonym_entity
+   *
+   * @return array
+   *   Array of extra items to be merged into the items that already exist in
+   *   field values
+   */
+  static public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+    $synonym = entity_label($synonym_entity_type, $synonym_entity);
+    switch ($field['type']) {
+      case 'text':
+        break;
+
+      // We add synonyms for numbers only if $synonym is a number.
+      case 'number_integer':
+      case 'number_float':
+      case 'number_decimal':
+        if (!is_numeric($synonym)) {
+          return array();
+        }
+        break;
+
+    }
+    return array(array(
+      'value' => $synonym,
+    ));
   }
 }
