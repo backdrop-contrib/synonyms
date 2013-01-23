@@ -73,7 +73,7 @@ function synonyms_extractor_info($field_type = NULL, $reset = FALSE) {
       if (is_array($extractor_classes)) {
         foreach ($extractor_classes as $class) {
           if (class_exists($class) && is_subclass_of($class, 'AbstractSynonymsExtractor')) {
-            foreach ($class::fieldTypesSupported() as $_field_type) {
+            foreach (call_user_func(array($class, 'fieldTypesSupported')) as $_field_type) {
               $info[$_field_type] = $class;
             }
           }
@@ -400,7 +400,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
         // We let the class that defines this field type as a source of synonyms
         // filter our and provide its suggestions based on this field.
         $class = synonyms_extractor_info($field['type']);
-        $class::processEntityFieldQuery($tag_last, $query, $field, $instance);
+        call_user_func(array($class, 'processEntityFieldQuery'), $tag_last, $query, $field, $instance);
 
         if (!empty($tags_typed)) {
           $query->propertyCondition('name', $tags_typed, 'NOT IN');
@@ -568,7 +568,7 @@ function synonyms_get_term_synonyms($term) {
 
     if (is_array($items) && !empty($items)) {
       $class = synonyms_extractor_info($field['type']);
-      $synonyms = array_merge($synonyms, $class::synonymsExtract($items, $field, $instance, $term, 'taxonomy_term'));
+      $synonyms = array_merge($synonyms, call_user_func(array($class, 'synonymsExtract'), $items, $field, $instance, $term, 'taxonomy_term'));
     }
   }
 
@@ -626,7 +626,7 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
   $trunk_entity_ids = entity_extract_ids($trunk_entity_type, $trunk_entity);
   $instance = field_info_instance($trunk_entity_type, $field['field_name'], $trunk_entity_ids[2]);
 
-  $extra_items = $extractor::mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
+  $extra_items = call_user_func(array($extractor, 'mergeEntityAsSynonym'), $items, $field, $instance, $synonym_entity, $synonym_entity_type);
 
   // Merging extracted synonym items into the values of the field that already
   // exist.
