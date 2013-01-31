@@ -465,16 +465,16 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
  * To maximize the match trimming and case-insensetive comparison is used.
  *
  * @param string $name
- *   The string to be searched for its {taxonomy_term}.tid
+ *   The string to be searched for its {taxonomy_term_data}.tid
  * @param object $vocabulary
  *   Fully loaded vocabulary object in which you wish to search
  * @param int $parent
  *   Optional. In case you want to narrow your search scope, this parameter
- *   takes in the {taxonomy_term}.tid of the parent term, letting you search
+ *   takes in the {taxonomy_term_data}.tid of the parent term, letting you search
  *   only among its children
  *
  * @return int
- *   If the look up was successfull returns the {taxonomy_term}.tid of the
+ *   If the look up was successfull returns the {taxonomy_term_data}.tid of the
  *   found term, otherwise returns 0
  */
 function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
@@ -507,17 +507,17 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
  * as it won't generate the same terms over and over again.
  *
  * @param string $name
- *   The string to be searched for its {taxonomy_term}.tid
+ *   The string to be searched for its {taxonomy_term_data}.tid
  * @param object $vocabulary
  *   Fully loaded vocabulary object in which you wish to search
  * @param int $parent
  *   Optional. In case you want to narrow your search scope, this parameter
- *   takes in the {taxonomy_term}.tid of the parent term, letting you search
+ *   takes in the {taxonomy_term_data}.tid of the parent term, letting you search
  *   only among its children
  *
  * @return int
- *   If a term already exists, its {taxonomy_term}.tid is returned,
- *   otherwise it creates a new term and returns its {taxonomy_term}.tid
+ *   If a term already exists, its {taxonomy_term_data}.tid is returned,
+ *   otherwise it creates a new term and returns its {taxonomy_term_data}.tid
  */
 function synonyms_add_term_by_synonym($name, $vocabulary, $parent = 0) {
   $tid = synonyms_get_term_by_synonym($name, $vocabulary, $parent);
