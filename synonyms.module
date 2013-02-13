@@ -16,9 +16,10 @@ define('SYNONYMS_DEFAULT_FIELD_NAME', 'synonyms_synonyms');
 function synonyms_menu() {
   $items = array();
 
-  $items['synonyms/autocomplete'] = array(
+  $items['synonyms/autocomplete/%/%/%'] = array(
     'title' => 'Autocomplete Synonyms',
     'page callback' => 'synonyms_autocomplete',
+    'page arguments' => array(2, 3, 4),
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
@@ -193,6 +194,8 @@ function synonyms_field_widget_info() {
       'settings' => array(
         'size' => 60,
         'autocomplete_path' => 'synonyms/autocomplete',
+        'suggestion_size' => 10,
+        'auto_creation' => 1,
       ),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -217,6 +220,15 @@ function synonyms_field_widget_settings_form($field, $instance) {
     '#default_value' => isset($settings['auto_creation']) ? $settings['auto_creation'] : 0,
   );
 
+  $form['suggestion_size'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Suggestions Size'),
+    '#description' => t('Please, enter how many suggested entities to show in the autocomplete textfield.'),
+    '#required' => TRUE,
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#default_value' => $settings['suggestion_size'],
+  );
+
   return $form;
 }
 
@@ -232,7 +244,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
   $element += array(
     '#type' => 'textfield',
     '#default_value' => taxonomy_implode_tags($tags),
-    '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $field['field_name'],
+    '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
     '#size' => $instance['widget']['settings']['size'],
     '#maxlength' => 1024,
     '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
@@ -316,19 +328,24 @@ function synonyms_taxonomy_form_vocabulary_submit($form, &$form_state) {
  *
  * @param string $field_name
  *   The name of the term reference field.
+ * @param string $entity_type
+ *   Entity type to which the supplied $field_name is attached to
+ * @param string $bundle
+ *   Bundle name to which the supplied $field_name is attached to
  * @param string $tags_typed
  *   (optional) A comma-separated list of term names entered in the
  *   autocomplete form element. Only the last term is used for autocompletion.
  *   Defaults to '' (an empty string).
  */
-function synonyms_autocomplete($field_name, $tags_typed = '') {
-  // How many suggestions maximum we are able to output.
-  $max_suggestions = 10;
-
+function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed = '') {
   // If the request has a '/' in the search text, then the menu system will have
   // split it into multiple arguments, recover the intended $tags_typed.
   $args = func_get_args();
   // Shift off the $field_name argument.
+  array_shift($args);
+  // Shift off the $entity_type argument.
+  array_shift($args);
+  // Shift off the $bundle argument.
   array_shift($args);
   $tags_typed = implode('/', $args);
 
@@ -339,6 +356,19 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     print t('Taxonomy field @field_name not found.', array('@field_name' => $field_name));
     exit;
   }
+
+  if (!($instance = field_info_instance($entity_type, $field['field_name'], $bundle))) {
+    // Error string. The JavaScript handler will realize this is not JSON and
+    // will display it as debugging information.
+    print t('There was not found an instance of @field_name in @entity_type.', array(
+      '@field_name' => $field_name,
+      '@entity_type' => $entity_type,
+    ));
+    exit;
+  }
+
+  // How many suggestions maximum we are able to output.
+  $max_suggestions = $instance['widget']['settings']['suggestion_size'];
 
   // The user enters a comma-separated list of tags. We only autocomplete the
   // last tag.
@@ -355,6 +385,17 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     }
     $vocabularies = taxonomy_vocabulary_load_multiple(array_keys($vocabularies));
 
+    // Array of found suggestions, each subarray of this array will represent
+    // a single suggestion entry. The sub array must at least contain the
+    // following keys:
+    //   tid - tid of the suggested term
+    //   name - name of the suggested term
+    // And optionally, if the term is suggested based on its synonym, the sub
+    // array should also include the additional key:
+    //   synonym - string represetnation of the synonym based on which
+    //     the suggested term was included.
+    $tags_return = array();
+
     // Firstly getting a list of tids that match by $term->name.
     $query = db_select('taxonomy_term_data', 't');
     $query->addTag('translatable');
@@ -365,7 +406,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
       $query->condition('t.name', $tags_typed, 'NOT IN');
     }
     // Select rows that match by term name.
-    $tags_return = $query
+    $result = $query
       ->fields('t', array('tid', 'name'))
       ->condition('t.vid', array_keys($vocabularies))
       ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
@@ -374,8 +415,11 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
       ->fetchAllKeyed();
 
     // Converting results into another format.
-    foreach ($tags_return as $tid => $name) {
-      $tags_return[$tid] = array('name' => $name);
+    foreach ($result as $tid => $name) {
+      $tags_return[] = array(
+        'name' => $name,
+        'tid' => $tid,
+      );
     }
 
     $synonym_tids = array();
@@ -398,22 +442,22 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
             ->entityCondition('bundle', $vocabulary->machine_name);
 
         // We let the class that defines this field type as a source of synonyms
-        // filter our and provide its suggestions based on this field.
+        // filter out and provide its suggestions based on this field.
         $class = synonyms_extractor_info($field['type']);
         call_user_func(array($class, 'processEntityFieldQuery'), $tag_last, $query, $field, $instance);
 
         if (!empty($tags_typed)) {
           $query->propertyCondition('name', $tags_typed, 'NOT IN');
         }
-        if (!empty($tags_return)) {
+        /*if (!empty($tags_return)) {
           // We don't want to search among the terms already found by term name.
           $query->entityCondition('entity_id', array_keys($tags_return), 'NOT IN');
-        }
-        if (!empty($synonym_tids)) {
+        }*/
+        /*if (!empty($synonym_tids)) {
           // Nor we want to search among the terms already mached by previous
           // synonym fields.
           $query->entityCondition('entity_id', $synonym_tids, 'NOT IN');
-        }
+        }*/
         $tmp = $query->execute();
         if (!empty($tmp)) {
           // Merging the results.
@@ -425,14 +469,16 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     if (!empty($synonym_tids)) {
       $synonym_tids = array_slice($synonym_tids, 0, $max_suggestions - count($tags_return));
       foreach (taxonomy_term_load_multiple($synonym_tids) as $synonym_term) {
-        $tags_return[$synonym_term->tid] = array('name' => $synonym_term->name);
-        // Additionally we have to find out which synonym triggered inclusion
-        // of this term.
+        $tmp = array(
+          'name' => $synonym_term->name,
+          'tid' => $synonym_term->tid,
+        );
+        // Additionally we have to find out which synonym triggered inclusion of
+        // this term.
         $synonyms = synonyms_get_term_synonyms($synonym_term);
         foreach ($synonyms as $item) {
           if (strpos(mb_strtoupper($item['value'], 'UTF-8'), mb_strtoupper($tag_last, 'UTF-8')) !== FALSE) {
-            $tags_return[$synonym_term->tid]['synonym'] = $item['value'];
-            break;
+            $tags_return[] = array('synonym' => $item['value']) + $tmp;
           }
         }
       }
@@ -440,7 +486,7 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
     $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
 
     // Now formatting the results.
-    foreach ($tags_return as $tid => $info) {
+    foreach ($tags_return as $info) {
       $n = $info['name'];
       // Term names containing commas or quotes must be wrapped in quotes.
       if (strpos($info['name'], ',') !== FALSE || strpos($info['name'], '"') !== FALSE) {
@@ -452,6 +498,9 @@ function synonyms_autocomplete($field_name, $tags_typed = '') {
       }
       else {
         $display_name = check_plain($info['name']);
+      }
+      while (isset($term_matches[$prefix . $n])) {
+        $n .= ' ';
       }
       $term_matches[$prefix . $n] = $display_name;
     }
