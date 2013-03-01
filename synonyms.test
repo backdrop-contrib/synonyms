@@ -247,18 +247,48 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
 }
 
 /**
- * Test "Synonym friednly autocomplete" widget of Synonyms module.
+ * Test "Synonyms friednly autocomplete" widget of Synonyms module.
  */
 class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
+
+  /**
+   * Array of fully loaded vocabulary entities to be used in this test.
+   *
+   * Array is keyed by the corresponding vocabulary's machine name.
+   *
+   * @var array
+   */
   protected $vocabularies = array(
     'enabled' => TRUE,
     'disabled' => FALSE,
   );
 
+  /**
+   * Array of fully loaded taxonomy term entities to be used in this test.
+   *
+   * Term entities are grouped by machine name of the vocabulary to which they
+   * belong.
+   *
+   * @var array
+   */
   protected $terms = array(
     'enabled' => array(),
     'disabled' => array(),
   );
+
+  /**
+   * Entity type to which a term reference field with tested widget is attached.
+   *
+   * @var string
+   */
+  protected $entity_type = 'node';
+
+  /**
+   * Bundle to which a term reference field with tested widget is attached.
+   *
+   * @var string
+   */
+  protected $bundle = 'synonyms_test_content';
 
   /**
    * GetInfo method.
@@ -292,7 +322,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     // Creating a test content type.
     $this->drupalPost('admin/structure/types/add', array(
       'name' => 'Synonyms Test Content',
-      'type' => 'synonyms_test_content',
+      'type' => $this->bundle,
     ), 'Save content type');
 
     // Attaching each vocabulary term reference field to the new content type.
@@ -313,8 +343,8 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     // Flushing static cache.
     _field_info_collate_fields(TRUE);
 
-    // Now creating taxonomy tree for each vocabularies.
-    // For synonym-disbaled vocabulary just one term is good enough.
+    // Now creating taxonomy tree for each vocabulary.
+    // For synonym-disbaled vocabulary just a few terms is good enough.
     $name = $this->randomName();
     $this->drupalPost('admin/structure/taxonomy/disabled/add', array(
       'name' => $name,
@@ -394,9 +424,9 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
       'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name,
     ), 'Save');
     $this->assertText($this->terms['enabled']['no_synonyms']->name, 'Existing term was assigned to the new node');
-    $this->assertText($new_term_name, 'Auto created term was assigned to the new node');
+    $this->assertText($new_term_name, 'Auto created term was assigned to the new node when Auto creation is on.');
     $term = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->assertEqual($term->name, $new_term_name, 'The auto created term has been created');
+    $this->assertEqual($term->name, $new_term_name, 'The auto created term has been created when Auto creation is on.');
 
     // Trying disabled auto creation.
     $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
@@ -406,12 +436,12 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     $new_term_name = $this->randomName();
     $this->drupalPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      'field_synonyms_term_enabled[und]' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name,
+      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name,
     ), 'Save');
     $this->assertText($this->terms['enabled']['no_synonyms']->name, 'Existing term was assigned to the new node');
-    $this->assertNoText($new_term_name, 'Auto created term was not assigned to the new node');
+    $this->assertNoText($new_term_name, 'Auto created term was not assigned to the new node when Auto creation is off.');
     $term = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->assertNotEqual($term->name, $new_term_name, 'The auto created term has not been created');
+    $this->assertNotEqual($term->name, $new_term_name, 'The auto created term has not been created when Auto creation is off.');
   }
 
   /**
@@ -449,7 +479,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     $assertions[] = array(
       'vocabulary' => 'disabled',
       'input' => $terms['term1']->name . ',' . drupal_strtoupper(drupal_substr($terms['term1']->name, 1, -1)),
-      'response' => array($terms['term1']->name . ', ' . $this->terms['disabled']['term1_longer_name']->name => $this->terms['disabled']['term1_longer_name']->name),
+      'response' => array($terms['term1']->name . ', ' . $terms['term1_longer_name']->name => $terms['term1_longer_name']->name),
       'message' => 'Submitting one term already chosen along with a name similar to 2 existing term names into a disabled synonyms vocabulary',
     );
     $assertions[] = array(
@@ -475,7 +505,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     );
     $assertions[] = array(
       'vocabulary' => 'enabled',
-      'input' => $terms['one_synonym']->name . ',' . $terms['one_synonym']->synonyms_synonyms[LANGUAGE_NONE][0]['safe_value'],
+      'input' => $terms['one_synonym']->name . ',' . $terms['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['safe_value'],
       'response' => array(),
       'message' => 'Submitting a synonym of a term over again into an enabled synonyms vocabulary',
     );
@@ -487,7 +517,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
         'message' => 'Submitting a name similar to ' . $k . ' term into an enabled synonyms vocabulary',
       );
 
-      $synonyms = field_get_items('taxonomy_term', $terms[$k], 'synonyms_synonyms');
+      $synonyms = field_get_items('taxonomy_term', $terms[$k], SYNONYMS_DEFAULT_FIELD_NAME);
       if (is_array($synonyms)) {
         foreach ($synonyms as $delta => $item) {
           $assertions[] = array(
@@ -501,28 +531,122 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     }
     $assertions[] = array(
       'vocabulary' => 'enabled',
-      'input' => $terms['name_similar_synonym']->name,
-      'response' => array($terms['name_similar_synonym']->name => $terms['name_similar_synonym']->name),
-      'message' => 'Submitting a keyword similar to name and synonym of a term into an enabled synonyms vocabulary',
-    );
-    $assertions[] = array(
-      'vocabulary' => 'enabled',
-      'input' => 'simiar_synonyms_',
-      'response' => array($terms['similar_synonyms']->name => $this->synonymAutocompleteResult($terms['similar_synonyms'], $terms['similar_synonyms']->synonyms_synonyms[LANGUAGE_NONE][0]['safe_value'])),
-      'message' => 'Submitting a keyword similar to name and synonym of a term into an enabled synonyms vocabulary',
-    );
-    $assertions[] = array(
-      'vocabulary' => 'enabled',
       'input' => 'one_term_name_another_synonym_',
       'response' => array(
         $terms['name_another_synonym']->name => $terms['name_another_synonym']->name,
-        $terms['synonym_another_name']->name => $this->synonymAutocompleteResult($terms['synonym_another_name'], $terms['synonym_another_name']->synonyms_synonyms[LANGUAGE_NONE][0]['safe_value']),
+        $terms['synonym_another_name']->name => $this->synonymAutocompleteResult($terms['synonym_another_name'], $terms['synonym_another_name']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['safe_value']),
       ),
       'message' => 'Submitting a keyword similar to name of one term and synonym of another into an enabled synonyms vocabulary yields both included in the results',
     );
 
     foreach ($assertions as $v) {
       $this->assertAutocompleteMenuPath($v);
+    }
+  }
+
+  /**
+   * Test 'Suggestions Size' setting of synonyms-friendly autocomplete widget.
+   */
+  function testWidgetSettingsSuggestionSize() {
+    $suggestion_size = 1;
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_disabled', array(
+      'instance[widget][settings][suggestion_size]' => $suggestion_size,
+    ), 'Save settings');
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
+      'instance[widget][settings][suggestion_size]' => $suggestion_size,
+    ), 'Save settings');
+
+    $assertions = array();
+
+    // If size was bigger than 1, we'd get suggested 2 terms: 'term1' and
+    // 'term1_longer_name'.
+    $assertions[] = array(
+      'vocabulary' => 'disabled',
+      'input' => $this->terms['disabled']['term1']->name,
+      'response' => array($this->terms['disabled']['term1']->name => $this->terms['disabled']['term1']->name),
+      'message' => 'Suggestions Size option is respected in autocomplete widget for term suggestion entries.',
+    );
+
+    $assertions[] = array(
+      'vocabulary' => 'enabled',
+      'input' => $this->terms['enabled']['name_similar_synonym']->name,
+      'response' => array($this->terms['enabled']['name_similar_synonym']->name => $this->terms['enabled']['name_similar_synonym']->name),
+      'message' => 'Suggestions Size option is respected in autocomplete widget for term and synonym suggestion entries.'
+    );
+
+    $assertions[] = array(
+      'vocabulary' => 'enabled',
+      'input' => drupal_substr($this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'], 0, 8),
+      'response' => array($this->terms['enabled']['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['enabled']['similar_synonyms'], $this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'])),
+      'message' => 'Suggestions Size option is respected in autocomplete widget for synonyms suggestion entries.'
+    );
+
+    foreach ($assertions as $assertion) {
+      $this->assertAutocompleteMenuPath($assertion);
+    }
+  }
+
+  /**
+   * Test 'Suggest only one entry per term' setting of autocomplete widget.
+   */
+  function testWidgetSettingsSuggestOnlyUnique() {
+    $assertions = array();
+
+    // Testing disabled "Suggest only one entry per term" setting.
+    $assertions[] = array(
+      'vocabulary' => 'enabled',
+      'input' => $this->terms['enabled']['name_similar_synonym']->name,
+      'response' => array(
+        $this->terms['enabled']['name_similar_synonym']->name => $this->terms['enabled']['name_similar_synonym']->name,
+        $this->terms['enabled']['name_similar_synonym']->name . ' ' => $this->synonymAutocompleteResult($this->terms['enabled']['name_similar_synonym'], $this->terms['enabled']['name_similar_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value']),
+      ),
+      'message' => 'Both term and its synonym are shown when "Suggest only one entry per term" is off.'
+    );
+
+    $assertions[] = array(
+      'vocabulary' => 'enabled',
+      'input' => drupal_substr($this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'], 0, 8),
+      'response' => array(
+        $this->terms['enabled']['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['enabled']['similar_synonyms'], $this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value']),
+        $this->terms['enabled']['similar_synonyms']->name . ' ' => $this->synonymAutocompleteResult($this->terms['enabled']['similar_synonyms'], $this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][1]['value']),
+      ),
+      'message' => 'Multiple synonyms are shown when "Suggest only one entry per term" is off.'
+    );
+
+    foreach ($assertions as $assertion) {
+      $this->assertAutocompleteMenuPath($assertion);
+    }
+
+    // Testing enabled "Suggest only one entry per term" setting.
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_disabled', array(
+      'instance[widget][settings][suggest_only_unique]' => TRUE,
+    ), 'Save settings');
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
+      'instance[widget][settings][suggest_only_unique]' => TRUE,
+    ), 'Save settings');
+
+    $assertions = array();
+
+    $assertions[] = array(
+      'vocabulary' => 'enabled',
+      'input' => $this->terms['enabled']['name_similar_synonym']->name,
+      'response' => array(
+        $this->terms['enabled']['name_similar_synonym']->name => $this->terms['enabled']['name_similar_synonym']->name,
+      ),
+      'message' => 'Only term is shown and synonym is not shown when "Suggest only one entry per term" is on.'
+    );
+
+    $assertions[] = array(
+      'vocabulary' => 'enabled',
+      'input' => drupal_substr($this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'], 0, 8),
+      'response' => array(
+        $this->terms['enabled']['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['enabled']['similar_synonyms'], $this->terms['enabled']['similar_synonyms']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value']),
+      ),
+      'message' => 'Only single synonym is shown when "Suggest only one entry per term" is on.'
+    );
+
+    foreach ($assertions as $assertion) {
+      $this->assertAutocompleteMenuPath($assertion);
     }
   }
 
@@ -538,7 +662,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    *                 page
    */
   protected function assertAutocompleteMenuPath($assertion) {
-    $response = $this->drupalGet('synonyms/autocomplete/field_synonyms_term_' . $assertion['vocabulary'] . '/' . $assertion['input']);
+    $response = $this->drupalGet('synonyms/autocomplete/field_synonyms_term_' . $assertion['vocabulary'] . '/' . $this->entity_type . '/' . $this->bundle . '/' . $assertion['input']);
     if (!$response) {
       $this->fail($assertion['message'], 'Autocomplete Menu Path');
       return;
