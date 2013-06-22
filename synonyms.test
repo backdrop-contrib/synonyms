@@ -410,7 +410,9 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    * Test auto-creation functionality.
    *
    * Test the auto-creation funcationality of the synonym friendly autocomplete
-   * widget type.
+   * widget type. Along the way it tests whether synonyms, submitted into the
+   * widget's textfield are converted into the terms, synonyms of which they
+   * are.
    */
   public function testAutoCreation() {
     // Trying enabled auto creation.
@@ -421,10 +423,11 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     $new_term_name = $this->randomName();
     $this->drupalPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name,
+      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['enabled']['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
     $this->assertText($this->terms['enabled']['no_synonyms']->name, 'Existing term was assigned to the new node');
     $this->assertText($new_term_name, 'Auto created term was assigned to the new node when Auto creation is on.');
+    $this->assertText($this->terms['enabled']['one_synonym']->name, 'Submitting a synonym into autocomplete widget results in the term, to which the synonym belongs, being assigned to the just created entity (when Auto creation is on).');
     $term = $this->getLastTerm($this->vocabularies['enabled']);
     $this->assertEqual($term->name, $new_term_name, 'The auto created term has been created when Auto creation is on.');
 
@@ -436,10 +439,11 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     $new_term_name = $this->randomName();
     $this->drupalPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name,
+      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['enabled']['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
     $this->assertText($this->terms['enabled']['no_synonyms']->name, 'Existing term was assigned to the new node');
     $this->assertNoText($new_term_name, 'Auto created term was not assigned to the new node when Auto creation is off.');
+    $this->assertText($this->terms['enabled']['one_synonym']->name, 'Submitting a synonym into autocomplete widget results in the term, to which the synonym belongs, being assigned to the just created entity (when Auto creation is off).');
     $term = $this->getLastTerm($this->vocabularies['enabled']);
     $this->assertNotEqual($term->name, $new_term_name, 'The auto created term has not been created when Auto creation is off.');
   }

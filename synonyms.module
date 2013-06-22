@@ -275,21 +275,25 @@ function synonyms_field_widget_error($element, $error, $form, &$form_state) {
  * Handle validation for taxonomy term synonym-friendly autocomplete element.
  */
 function synonyms_autocomplete_validate($element, &$form_state) {
-  // After taxonomy_autocomplete_validate() has finished its job
-  // it might left terms in the format for autocreation. Since our field
-  // supports auto creation as a configurable option, we have to make sure
-  // auto creation terms are allowed.
+  // After taxonomy_autocomplete_validate() has finished its job any terms it
+  // didn't find have been set for autocreation. We need to:
+  // (a) Double-check that those terms are not synonyms.
+  // (b) Check that synonyms' configurable auto-creation option is enabled.
+
   $value = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
-  if (!$element['#auto_creation']) {
-    // Deleting all the terms meant to be auto-created.
-    foreach ($value as $delta => $term) {
-      if ($term['tid'] == 'autocreate') {
+  foreach ($value as $delta => $term) {
+    if ($term['tid'] == 'autocreate') {
+      $vocabulary = taxonomy_vocabulary_load($term['vid']);
+      $synonym_tid = synonyms_get_term_by_synonym($term['name'], $vocabulary);
+      if ($synonym_tid != 0) {
+        $value[$delta]['tid'] = $synonym_tid;
+      }
+      elseif (empty($element['#auto_creation'])) {
         unset($value[$delta]);
       }
     }
-    $value = array_values($value);
   }
-
+  $value = array_values($value);
   form_set_value($element, $value, $form_state);
 }
 
