@@ -74,10 +74,8 @@ function synonyms_extractor_info($field_type = NULL, $reset = FALSE) {
 
       if (is_array($extractor_classes)) {
         foreach ($extractor_classes as $class) {
-          if (class_exists($class) && is_subclass_of($class, 'AbstractSynonymsExtractor')) {
-            foreach (call_user_func(array($class, 'fieldTypesSupported')) as $_field_type) {
-              $info[$_field_type] = $class;
-            }
+          foreach (call_user_func(array($class, 'fieldTypesSupported')) as $_field_type) {
+            $info[$_field_type] = $class;
           }
         }
       }
@@ -85,13 +83,6 @@ function synonyms_extractor_info($field_type = NULL, $reset = FALSE) {
       // Letting whoever wants to implement any changes after preprocessing the
       // data.
       drupal_alter('synonyms_extractor_info', $info);
-
-      // Validating that any changes made to $info do not break class hierarchy.
-      foreach ($info as $k => $v) {
-        if (!class_exists($v) || !is_subclass_of($v, 'AbstractSynonymsExtractor')) {
-          unset($info[$k]);
-        }
-      }
 
       $cache = $info;
       cache_set($cid, $cache, 'cache', CACHE_TEMPORARY);
