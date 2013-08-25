@@ -14,7 +14,7 @@ abstract class AbstractSynonymsExtractor {
    *   Array of Field API field types from which this class is able to extract
    *   synonyms
    */
-  public static abstract function fieldTypesSupported();
+  public abstract static function fieldTypesSupported();
 
   /**
    * Extract synonyms from a field attached to an entity.
@@ -38,7 +38,7 @@ abstract class AbstractSynonymsExtractor {
    * @return array
    *   Array of synonyms extracted from $items
    */
-  public static abstract function synonymsExtract($items, $field, $instance, $entity, $entity_type);
+  public abstract static function synonymsExtract($items, $field, $instance, $entity, $entity_type);
 
   /**
    * Allow you to hook in during autocomplete suggestions generation.
@@ -58,7 +58,7 @@ abstract class AbstractSynonymsExtractor {
    * @param array $instance
    *   Array of instance definition according to Field API
    */
-  public static abstract function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance);
+  public abstract static function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance);
 
   /**
    * Add an entity as a synonym into a field of another entity.
@@ -91,7 +91,7 @@ abstract class AbstractSynonymsExtractor {
    *   Array of extra items to be merged into the items that already exist in
    *   field values
    */
-  public static abstract function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
+  public abstract static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
 
   /**
    * Supportive method.
