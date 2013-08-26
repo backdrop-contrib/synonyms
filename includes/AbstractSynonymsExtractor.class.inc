@@ -107,6 +107,6 @@ abstract class AbstractSynonymsExtractor {
    *   Field array passed to $this->processEntityFieldQuery() method
    */
   protected static function emptyResultsCondition(EntityFieldQuery $query) {
-    $query->entityCondition('entity_id', -1);
+    $query->range(0, 0);
   }
 }

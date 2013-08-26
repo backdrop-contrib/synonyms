@@ -655,3 +655,15 @@ function synonyms_instances_extract_applicapable($vocabulary) {
   }
   return $applicapable;
 }
+
+/**
+ * Implements hook_views_api().
+ *
+ * @see hook_views_api()
+ */
+function synonyms_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'synonyms') . '/views',
+  );
+}
