@@ -16,6 +16,7 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
     // We just want to add yet another way of validation - synonyms friendly
     // validation.
     $form['type']['#options']['synonym'] = t('Term name or synonym');
+    $form['type']['#options']['synonym_tid'] = t('Term name or synonym converted to Term ID');
   }
 
   function validate_argument($argument) {
@@ -25,7 +26,8 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
 
     switch ($type) {
       case 'synonym':
-        // We are requested to do synonyms friednly validation. We will have to
+      case 'synonym_tid':
+        // We are requested to do synonyms friendly validation. We will have to
         // go through each of allowed vocabularies, collecting terms whose
         // synonyms might look like the argument we have. However, it is not
         // that easy to achieve due to the fact that synonyms may be kept in
@@ -54,7 +56,7 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
         if ($result->rowCount()) {
           // We have found a term, we are going to use it.
           $term = taxonomy_term_load($result->fetchField(0));
-          $this->argument->argument = $term->name;
+          $this->argument->argument = $this->synonyms_get_term_property($term);
           $this->argument->validated_title = check_plain(entity_label('taxonomy_term', $term));
           return TRUE;
         }
@@ -123,7 +125,7 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
               // Finally we found a synonym that matches our argument. We are
               // going to use the corresponding term and there is no point to
               // continue searching.
-              $this->argument->argument = $term->name;
+              $this->argument->argument = $this->synonyms_get_term_property($term);
               $this->argument->validated_title = check_plain(entity_label('taxonomy_term', $term));
               return TRUE;
             }
@@ -136,5 +138,26 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
       default:
         return parent::validate_argument($argument);
     }
+  }
+
+  /**
+   * Return necessary property (per chosen validator) of encountered term.
+   *
+   * @param $term object
+   *   Fully loaded taxonomy term from which necessary property should be
+   *   returned
+   *
+   * @return mixed
+   *   Necessary property (per chosen validator) of the provided term
+   */
+  function synonyms_get_term_property($term) {
+    switch ($this->options['type']) {
+      case 'synonym':
+        return $term->name;
+
+      case 'synonym_tid':
+        return $term->tid;
+    }
+    return NULL;
   }
 }
