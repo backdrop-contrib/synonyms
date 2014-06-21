@@ -823,7 +823,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
    * Assert search results.
    *
    * @param array $assertion
-   *   Specially encoded array of assertion. Should include the follwing keys:
+   *   Specially encoded array of assertion. Should include the following keys:
    *     keyword - what keyword has to be supplied to the search mechanism
    *     results - array of nodes that are expected to be on search results
    *     message - Drupal assertion message to be displayed on test results
@@ -850,7 +850,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
 }
 
 /**
- * Base class for all test cases that test Synonoyms Extractor classes.
+ * Base class for all test cases that test Synonyms Extractor classes.
  */
 abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
 
@@ -915,7 +915,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
    * @param array $field
    *   Field definition array as expected by Field API
    * @param array $instance
-   *   Instance defintion array as expected by Field API
+   *   Instance definition array as expected by Field API
    */
   protected function addFieldInstance($field, $instance) {
     $field = field_create_field($field);
@@ -1036,7 +1036,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
 /**
  * Test SynonymsSynonymsExtractor class.
  */
-class SynonymsSynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWebTestCase {
+class SynonymsSynonymsExtractorWebTestCase extends AbstractSynonymsExtractorWebTestCase {
 
   /**
    * GetInfo method.
@@ -1123,7 +1123,7 @@ class SynonymsSynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWeb
 /**
  * Test TaxonomySynonymsExtractor class.
  */
-class TaxonomySynonoymsExtractorWebTestCase extends AbstractSynonymsExtractorWebTestCase {
+class TaxonomySynonymsExtractorWebTestCase extends AbstractSynonymsExtractorWebTestCase {
 
   /**
    * Taxonomy vocabulary object terms.
