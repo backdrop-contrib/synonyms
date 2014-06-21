@@ -763,27 +763,43 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
    *
    * Since logically term and its synonyms represent the same entity, the idea
    * is that searching by a term synonym should trigger all content referencing
-   * that term to be included in search results.
+   * that term to be included in search results. Additionally we test that when
+   * a synonym is deleted from a term, corresponding content is no longer
+   * encountered when searched by ex-synonym.
    */
   public function testSearchTermSynonym() {
     // Create a few terms and synonyms.
     $terms = array();
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-    ), 'Save');
+    );
+    taxonomy_term_save($term);
     $terms['no_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $this->randomName(),
-    ), 'Save');
+      SYNONYMS_DEFAULT_FIELD_NAME => array(
+        LANGUAGE_NONE => array(
+          array('value' => $this->randomName()),
+        ),
+      )
+    );
+    taxonomy_term_save($term);
     $terms['one_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $this->randomName(),
-    ), 'Add another item');
-    $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $this->randomName(),
-    ), 'Save');
+      SYNONYMS_DEFAULT_FIELD_NAME => array(
+        LANGUAGE_NONE => array(
+          array('value' => $this->randomName()),
+          array('value' => $this->randomName()),
+        ),
+      )
+    );
+    taxonomy_term_save($term);
     $terms['two_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
 
     $assertions = array();
@@ -799,53 +815,69 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
     // Rebuilding Search index.
     $this->cronRun();
 
-    foreach ($terms as $k => $v) {
-      $assertions[] = array(
-        'keyword' => $v->name,
-        'results' => array($node),
-        'message' => 'Searching by name of the term ' . $k,
-      );
-      foreach (synonyms_get_term_synonyms($v) as $delta => $synonym) {
-        $assertions[] = array(
-          'keyword' => $synonym['value'],
-          'results' => array($node),
-          'message' => 'Searching by synonym #' . $delta . ' of the term ' . $k,
-        );
+    foreach ($terms as $k => $term) {
+      $this->assertSearchResults($term->name, array($node), 'Searching by name of the term ' . $k);
+      foreach (synonyms_get_term_synonyms($term) as $delta => $synonym) {
+        $this->assertSearchResults($synonym['value'], array($node), 'Searching by synonym #' . $delta . ' of the term ' . $k);
       }
     }
 
-    foreach ($assertions as $assertion) {
-      $this->assertSearchResults($assertion);
+    // Removing just one synonym from the terms and asserting node got
+    // re-indexed with new values of synonyms.
+    foreach ($terms as $k => $term) {
+      if (isset($term->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE]) && is_array($term->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE])) {
+        // Since there is a synonym from a term, we re-save the term without it
+        // and assert empty search results for the just deleted synonym.
+        $deleted_synonym = array_pop($term->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE]);
+        taxonomy_term_save($term);
+        $this->cronRun();
+        $this->assertSearchResults($deleted_synonym['value'], array(), 'Searching by recently deleted synonym of the term ' . $k . ' yields no results.');
+      }
+    }
+
+    // We disable entire field from being source of synonyms and make sure for
+    // all synonyms search results are empty.
+    $this->drupalPost('admin/structure/taxonomy/enabled/edit', array(
+      'synonyms[synonyms][' . SYNONYMS_DEFAULT_FIELD_NAME . ']' => FALSE,
+    ), 'Save');
+    $this->cronRun();
+    foreach ($terms as $k => $term) {
+      $items = field_get_items('taxonomy_term', $term, SYNONYMS_DEFAULT_FIELD_NAME);
+      if (is_array($items)) {
+        foreach ($items as $synonym) {
+          $this->assertSearchResults($synonym['value'], array(), 'Searching by ' . $k . ' term synonym, which field was recently disabled as source of synonyms in vocabulary yields no results.');
+        }
+      }
     }
   }
 
   /**
    * Assert search results.
    *
-   * @param array $assertion
-   *   Specially encoded array of assertion. Should include the following keys:
-   *     keyword - what keyword has to be supplied to the search mechanism
-   *     results - array of nodes that are expected to be on search results
-   *     message - Drupal assertion message to be displayed on test results
-   *                 page
+   * @param $keyword string
+   *   Keyword to supply to the search mechanism
+   * @param $results array
+   *   Array of fully loaded nodes that are expected to be on search results
+   * @param $message string
+   *   Drupal assertion message to display on test results page
    */
-  protected function assertSearchResults($assertion) {
-    $response = $this->drupalGet('search/node/' . $assertion['keyword']);
+  protected function assertSearchResults($keyword, $results, $message) {
+    $response = $this->drupalGet('search/node/' . $keyword);
     $matches = array();
     preg_match_all('#\<li[^>]+class="search-result"[^>]*\>(.*?)\</li\>#si', $response, $matches);
-    $results = $matches[1];
-    if (count($results) != count($assertion['results'])) {
-      $this->fail($assertion['message']);
+    $matches = $matches[1];
+    if (count($matches) != count($results)) {
+      $this->fail($message);
       return;
     }
-    $results = implode('', $results);
-    foreach ($assertion['results'] as $node) {
-      if (strpos($results, 'node/' . $node->nid) === FALSE) {
-        $this->fail($assertion['message']);
+    $matches = implode('', $matches);
+    foreach ($results as $node) {
+      if (strpos($matches, 'node/' . $node->nid) === FALSE) {
+        $this->fail($message);
         return;
       }
     }
-    $this->pass($assertion['message']);
+    $this->pass($message);
   }
 }
 

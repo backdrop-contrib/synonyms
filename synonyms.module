@@ -29,6 +29,35 @@ function synonyms_menu() {
 }
 
 /**
+ * Implements hook_taxonomy_term_update().
+ */
+function synonyms_taxonomy_term_update($term) {
+  // If we notice at least some change in synonyms of this term, we want to
+  // trigger search re-indexing of nodes, where this term is referenced, since
+  // change in term synonyms affects nodes ranking in the search.
+  if (isset($term->original)) {
+    $current_synonyms = synonyms_get_term_synonyms($term);
+    $previous_synonyms = synonyms_get_term_synonyms($term->original);
+    if (count($current_synonyms) != count($previous_synonyms)) {
+      // Schedule re-indexing, because amount of synonyms has changed.
+      module_load_include('inc', 'synonyms', 'synonyms.pages');
+      synonyms_reindex_nodes_by_terms(array($term->tid));
+    }
+    else {
+      foreach ($current_synonyms as $k => $current_synonym) {
+        if ($current_synonyms[$k]['value'] != $previous_synonyms[$k]['value']) {
+          // Schedule re-indexing, because some synonym has changed.
+          module_load_include('inc', 'synonyms', 'synonyms.pages');
+          synonyms_reindex_nodes_by_terms(array($term->tid));
+          break;
+        }
+      }
+    }
+  }
+
+}
+
+/**
  * Implements hook_synonyms_extractor_info().
  */
 function synonyms_synonyms_extractor_info() {
@@ -583,7 +612,9 @@ function synonyms_vocabulary_settings($vocabulary) {
   $settings = array();
 
   if (isset($vocabulary->vid)) {
-    $settings = variable_get('synonyms_settings_' . $vocabulary->vid, array());
+    $settings = variable_get('synonyms_settings_' . $vocabulary->vid, array(
+      'synonyms' => array(),
+    ));
   }
 
   return $settings;
@@ -600,6 +631,15 @@ function synonyms_vocabulary_settings($vocabulary) {
  *   synonyms_vocabulary_settings()
  */
 function synonyms_vocabulary_settings_save($vocabulary, $settings) {
+  // If source of synonyms has changed for this vocabulary, we have to trigger
+  // search re-indexing on all the nodes that reference at least 1 term from
+  // this vocabulary.
+  $previous_settings = synonyms_vocabulary_settings($vocabulary);
+  if (implode('', $settings['synonyms']) != implode('', $previous_settings['synonyms'])) {
+    module_load_include('inc', 'synonyms', 'synonyms.pages');
+    synonyms_reindex_nodes_by_vocabulary($vocabulary);
+  }
+
   variable_set('synonyms_settings_' . $vocabulary->vid, $settings);
 
   // Now enforcing each setting.
