@@ -85,7 +85,7 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
     //   name - name of the suggested term
     // And optionally, if the term is suggested based on its synonym, the sub
     // array should also include the additional key:
-    //   synonym - string represetnation of the synonym based on which
+    //   synonym - string representation of the synonym based on which
     //     the suggested term was included.
     $tags_return = array();
 
@@ -146,7 +146,7 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
           $query->entityCondition('entity_id', $tmp, 'NOT IN');
         }
         if ($suggest_only_unique && !empty($synonym_tids)) {
-          // We also don't want to search among the terms already mached by
+          // We also don't want to search among the terms already matched by
           // previous synonym fields.
           $query->entityCondition('entity_id', $synonym_tids, 'NOT IN');
         }
@@ -167,10 +167,9 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
         );
         // Additionally we have to find out which synonym triggered inclusion of
         // this term.
-        $synonyms = synonyms_get_term_synonyms($synonym_term);
-        foreach ($synonyms as $item) {
-          if (strpos(mb_strtoupper($item['value'], 'UTF-8'), mb_strtoupper($tag_last, 'UTF-8')) !== FALSE) {
-            $tags_return[] = array('synonym' => $item['value']) + $tmp;
+        foreach (synonyms_get_sanitized($synonym_term) as $item) {
+          if (strpos(mb_strtoupper($item, 'UTF-8'), mb_strtoupper($tag_last, 'UTF-8')) !== FALSE) {
+            $tags_return[] = array('synonym' => $item) + $tmp;
             if ($suggest_only_unique) {
               // We just want to output 1 single suggestion entry per term, so
               // one synonym is enough.
@@ -180,7 +179,7 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
         }
       }
     }
-    $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
+    $prefix = empty($tags_typed) ? '' : drupal_implode_tags($tags_typed) . ', ';
 
     if (count($tags_return) > $max_suggestions) {
       $tags_return = array_slice($tags_return, 0, $max_suggestions);
@@ -259,5 +258,32 @@ function synonyms_reindex_nodes_by_vocabulary($vocabulary) {
     ->fetchCol();
   if (!empty($tids)) {
     synonyms_reindex_nodes_by_terms($tids);
+  }
+}
+
+/**
+ * Submit handler for Taxonomy vocabulary edit form.
+ *
+ * Store extra values attached to form in this module.
+ */
+function synonyms_taxonomy_form_vocabulary_submit($form, &$form_state) {
+  $values = $form_state['values'];
+
+  if ($values['op'] == $form['actions']['submit']['#value']) {
+    if (isset($form['#vocabulary']->vid)) {
+      $vocabulary = taxonomy_vocabulary_load($form['#vocabulary']->vid);
+    }
+    else {
+      // As a fallback, if this is a just created vocabulary, we try to pull it
+      // up by the just submitted machine name.
+      $vocabulary = taxonomy_vocabulary_machine_name_load($values['machine_name']);
+    }
+
+    // Preprocessing values keeping only field names of the checked fields.
+    $values['synonyms']['synonyms'] = array_values(array_filter($values['synonyms']['synonyms']));
+
+    $settings = synonyms_vocabulary_settings($vocabulary);
+    $settings = $values['synonyms'] + $settings;
+    synonyms_vocabulary_settings_save($vocabulary, $settings);
   }
 }

@@ -175,28 +175,28 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     // Asserting the presence of synonym string.
     $this->assertText($synonym, 'The synonym string is present on taxonomy term view page');
 
-    // Testing the function synonyms_get_term_synonyms().
-    $synonyms = synonyms_get_term_synonyms($no_synonyms_term);
-    $this->assertTrue(empty($synonyms), 'Successfully called synonyms_get_term_synonyms() for a term without synonyms.');
-    $synonyms = synonyms_get_term_synonyms($one_synonym_term);
-    $this->assertTrue(count($synonyms) == 1 && $synonyms[0]['value'] == $synonym1, 'Sucessfully called synonyms_get_term_synonyms for a term with single synonym.');
-    $synonyms = synonyms_get_term_synonyms($two_synonyms_term);
-    $this->assertTrue(count($synonyms) == 2 && $synonyms[0]['value'] == $synonym1 && $synonyms[1]['value'] == $synonym2, 'Sucessfully called synonyms_get_term_synonyms for a term with 2 synonyms.');
+    // Testing the 'synonyms' property of 'taxonomy_term' entity.
+    $synonyms = synonyms_get_sanitized($no_synonyms_term);
+    $this->assertTrue(empty($synonyms), 'Successfully retrieved synonyms_get_sanitized() for a term without synonyms.');
+    $synonyms = synonyms_get_sanitized($one_synonym_term);
+    $this->assertTrue(count($synonyms) == 1 && $synonyms[0] == $synonym1, 'Successfully retrieved synonyms_get_sanitized() for a term with a single synonym.');
+    $synonyms = synonyms_get_sanitized($two_synonyms_term);
+    $this->assertTrue(count($synonyms) == 2 && $synonyms[0] == $synonym1 && $synonyms[1] == $synonym2, 'Successfully retrieved synonyms_get_sanitized() for a term with 2 synonyms.');
 
     // Testing the function synonyms_get_term_by_synonym().
     $tid = synonyms_get_term_by_synonym(drupal_strtoupper($synonym), $this->vocabularies['enabled'], $term_parent->tid);
-    $this->assertEqual($tid, $term->tid, 'Sucessfully looked up term by its synonym.');
+    $this->assertEqual($tid, $term->tid, 'Successfully looked up term by its synonym.');
     $tid = synonyms_get_term_by_synonym(drupal_strtoupper($name), $this->vocabularies['enabled'], $term_parent->tid);
-    $this->assertEqual($tid, $term->tid, 'Sucessfully looked up term by its name.');
+    $this->assertEqual($tid, $term->tid, 'Successfully looked up term by its name.');
     // Now submitting a non-existing name.
     $tid = synonyms_get_term_by_synonym($parent_synonym, $this->vocabularies['enabled'], $term_parent->tid);
     $this->assertEqual($tid, 0, 'synonyms_get_term_by_synonym() returns 0 if the term is not found (considering $parent parameter).');
 
     // Testing the function synonyms_add_term_by_synonym().
     $tid = synonyms_add_term_by_synonym(drupal_strtolower($name), $this->vocabularies['enabled'], $term_parent->tid);
-    $this->assertEqual($tid, $term->tid, 'Sucessfully called synonyms_add_term_by_synonym() on an existing title and no new term was created.');
+    $this->assertEqual($tid, $term->tid, 'Successfully called synonyms_add_term_by_synonym() on an existing title and no new term was created.');
     $tid = synonyms_add_term_by_synonym(drupal_strtolower($synonym), $this->vocabularies['enabled'], $term_parent->tid);
-    $this->assertEqual($tid, $term->tid, 'Sucessfully called synonyms_add_term_by_synonym() on an existing synonym and no new term was created.');
+    $this->assertEqual($tid, $term->tid, 'Successfully called synonyms_add_term_by_synonym() on an existing synonym and no new term was created.');
     drupal_static_reset();
     $tid = synonyms_add_term_by_synonym($parent_synonym, $this->vocabularies['enabled'], $term_parent->tid);
     $new_term = taxonomy_term_load($tid);
@@ -217,13 +217,13 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $term = array_pop(entity_load('taxonomy_term', array($term->tid), array(), TRUE));
     $this->assertFalse(isset($term->{SYNONYMS_DEFAULT_FIELD_NAME}), 'The term no longer has synonyms field after disabling "synonyms" feature for a vocabulary');
 
-    // Testing synonyms_get_term_synonums() function.
-    $synonyms = synonyms_get_term_synonyms($no_synonyms_term);
-    $this->assertTrue(empty($synonyms), 'Successfully called synonyms_get_term_synonyms() on a term without synonyms after disabling "synonyms" feature');
-    $synonyms = synonyms_get_term_synonyms($one_synonym_term);
-    $this->assertTrue(empty($synonyms), 'Successfully called synonyms_get_term_synonyms() on a term with single synonym after disabling "synonyms" feature');
-    $synonyms = synonyms_get_term_synonyms($two_synonyms_term);
-    $this->assertTrue(empty($synonyms), 'Successfully called synonyms_get_term_synonyms() on a term with 2 synonyms after disabling "synonyms" feature');
+    // Testing the 'synonyms' property of 'taxonomy_term' entity.
+    $synonyms = synonyms_get_sanitized($no_synonyms_term);
+    $this->assertTrue(empty($synonyms), 'Successfully retrieved synonyms_get_sanitized() on a term without synonyms after disabling "synonyms" feature');
+    $synonyms = synonyms_get_sanitized($one_synonym_term);
+    $this->assertTrue(empty($synonyms), 'Successfully retrieved synonyms_get_sanitized() on a term with a single synonym after disabling "synonyms" feature');
+    $synonyms = synonyms_get_sanitized($two_synonyms_term);
+    $this->assertTrue(empty($synonyms), 'Successfully retrieved synonyms_get_sanitized() on a term with 2 synonyms after disabling "synonyms" feature');
 
     $tid = synonyms_get_term_by_synonym(drupal_strtoupper($synonym), $this->vocabularies['enabled']);
     $this->assertEqual($tid, 0, 'synonyms_get_term_by_synonym() returns 0 after disabling "synonyms" feature for a vocabulary');
@@ -344,7 +344,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     _field_info_collate_fields(TRUE);
 
     // Now creating taxonomy tree for each vocabulary.
-    // For synonym-disbaled vocabulary just a few terms is good enough.
+    // For synonym-disabled vocabulary just a few terms is good enough.
     $name = $this->randomName();
     $this->drupalPost('admin/structure/taxonomy/disabled/add', array(
       'name' => $name,
@@ -385,7 +385,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
       SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $name . $this->randomName(),
     ), 'Save');
     $this->terms['enabled']['name_similar_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
-    $name = 'simiar_synonyms_';
+    $name = 'similar_synonyms_';
     $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
       'name' => $this->randomName(),
       SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $name . $this->randomName(),
@@ -409,7 +409,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
   /**
    * Test auto-creation functionality.
    *
-   * Test the auto-creation funcationality of the synonym friendly autocomplete
+   * Test the auto-creation functionality of the synonym friendly autocomplete
    * widget type. Along the way it tests whether synonyms, submitted into the
    * widget's textfield are converted into the terms, synonyms of which they
    * are.
@@ -528,7 +528,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
             'vocabulary' => 'enabled',
             'input' => drupal_strtolower(drupal_substr($item['safe_value'], 1, -1)),
             'response' => array($terms[$k]->name => $this->synonymAutocompleteResult($terms[$k], $item['safe_value'])),
-            'message' => 'Submitting a name similar to synonym#' . $delta . ' of the term ' . $k . 'into an enabled synonyms vocabulary',
+            'message' => 'Submitting a name similar to synonym#' . $delta . ' of the term ' . $k . ' into an enabled synonyms vocabulary',
           );
         }
       }
@@ -658,7 +658,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    * Assert output of synonym friendly autocomplete path.
    *
    * @param array $assertion
-   *   Specially encoded array of assertion. Should include the follwing keys:
+   *   Specially encoded array of assertion. Should include the following keys:
    *     vocabulary - machine name of vocabulary whose field is asserted
    *     input - input string to be fed to autocomplete menu path
    *     response - JSON decoded expected response of autocomplete menu path
@@ -815,8 +815,8 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
 
     foreach ($terms as $k => $term) {
       $this->assertSearchResults($term->name, array($node), 'Searching by name of the term ' . $k);
-      foreach (synonyms_get_term_synonyms($term) as $delta => $synonym) {
-        $this->assertSearchResults($synonym['value'], array($node), 'Searching by synonym #' . $delta . ' of the term ' . $k);
+      foreach (synonyms_get_sanitized($term) as $delta => $synonym) {
+        $this->assertSearchResults($synonym, array($node), 'Searching by synonym #' . $delta . ' of the term ' . $k);
       }
     }
 
