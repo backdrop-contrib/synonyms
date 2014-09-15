@@ -318,7 +318,7 @@ function synonyms_autocomplete_validate($element, &$form_state) {
 }
 
 /**
- * Submit hanlder for Taxonomy vocabulary edit form.
+ * Submit handler for Taxonomy vocabulary edit form.
  *
  * Store extra values attached to form in this module.
  */
@@ -336,12 +336,7 @@ function synonyms_taxonomy_form_vocabulary_submit($form, &$form_state) {
     }
 
     // Preprocessing values keeping only field names of the checked fields.
-    foreach ($values['synonyms']['synonyms'] as $k => $v) {
-      if (!$v) {
-        unset($values['synonyms']['synonyms'][$k]);
-      }
-    }
-    $values['synonyms']['synonyms'] = array_values($values['synonyms']['synonyms']);
+    $values['synonyms']['synonyms'] = array_values(array_filter($values['synonyms']['synonyms']));
     $settings = synonyms_vocabulary_settings($vocabulary);
     $settings = $values['synonyms'] + $settings;
     synonyms_vocabulary_settings_save($vocabulary, $settings);

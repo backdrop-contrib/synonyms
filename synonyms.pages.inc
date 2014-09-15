@@ -257,5 +257,7 @@ function synonyms_reindex_nodes_by_vocabulary($vocabulary) {
     ->condition('vid', $vocabulary->vid)
     ->execute()
     ->fetchCol();
-  synonyms_reindex_nodes_by_terms($tids);
+  if (!empty($tids)) {
+    synonyms_reindex_nodes_by_terms($tids);
+  }
 }
