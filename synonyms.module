@@ -45,7 +45,7 @@ function synonyms_taxonomy_term_update($term) {
     }
     else {
       foreach ($current_synonyms as $k => $current_synonym) {
-        if ($current_synonyms[$k]['value'] != $previous_synonyms[$k]['value']) {
+        if ($current_synonyms[$k] != $previous_synonyms[$k]) {
           // Schedule re-indexing, because some synonym has changed.
           module_load_include('inc', 'synonyms', 'synonyms.pages');
           synonyms_reindex_nodes_by_terms(array($term->tid));
