@@ -56,8 +56,8 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
   }
 
   public static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
-    // Firstly validating that this entity refernce is able to reference to that
-    // type of entity.
+    // Firstly validating that this entity reference is able to reference to
+    // that type of entity.
     $expected_synonym_entity_type = $field['settings']['target_type'];
     if ($expected_synonym_entity_type != $synonym_entity_type) {
       return array();

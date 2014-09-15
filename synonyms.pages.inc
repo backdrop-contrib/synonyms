@@ -78,15 +78,15 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
     }
     $vocabularies = taxonomy_vocabulary_load_multiple(array_keys($vocabularies));
 
-    // Array of found suggestions, each subarray of this array will represent
+    // Array of found suggestions. Each subarray of this array will represent
     // a single suggestion entry. The sub array must at least contain the
     // following keys:
     //   tid - tid of the suggested term
     //   name - name of the suggested term
     // And optionally, if the term is suggested based on its synonym, the sub
     // array should also include the additional key:
-    //   synonym - string representation of the synonym based on which
-    //     the suggested term was included.
+    //   synonym - string representation of the synonym based on which the
+    //     suggested term was included.
     $tags_return = array();
 
     // Firstly getting a list of tids that match by $term->name.
@@ -127,7 +127,7 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
         $instance = field_info_instance('taxonomy_term', $field['field_name'], $bundle);
         $query = new EntityFieldQuery();
         $query->entityCondition('entity_type', 'taxonomy_term')
-          ->entityCondition('bundle', $vocabulary->machine_name);
+          ->entityCondition('bundle', $bundle);
 
         // We let the class that defines this field type as a source of synonyms
         // filter out and provide its suggestions based on this field.

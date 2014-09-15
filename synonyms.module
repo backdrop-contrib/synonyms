@@ -376,8 +376,8 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
 /**
  * Look up a term considering synonyms and if nothing found add one.
  *
- * This function is useful for automated creation of new terms
- * as it won't generate the same terms over and over again.
+ * This function is useful for automated creation of new terms as it won't
+ * generate the same terms over and over again.
  *
  * @param string $name
  *   The string to be searched for its {taxonomy_term_data}.tid
@@ -385,8 +385,8 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
  *   Fully loaded vocabulary object in which you wish to search
  * @param int $parent
  *   Optional. In case you want to narrow your search scope, this parameter
- *   takes in the {taxonomy_term_data}.tid of the parent term, letting you search
- *   only among its children
+ *   takes in the {taxonomy_term_data}.tid of the parent term, letting you
+ *   search only among its children
  *
  * @return int
  *   If a term already exists, its {taxonomy_term_data}.tid is returned,
@@ -480,8 +480,8 @@ function synonyms_get_term_synonyms($term) {
           'value' => $synonym,
           'safe_value' => check_plain($synonym),
         );
+      }
     }
-  }
   }
 
   return $synonyms;
@@ -714,8 +714,6 @@ function synonyms_instances_extract_applicable($vocabulary) {
 
 /**
  * Implements hook_views_api().
- *
- * @see hook_views_api()
  */
 function synonyms_views_api() {
   return array(

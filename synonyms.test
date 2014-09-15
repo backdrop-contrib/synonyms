@@ -38,7 +38,7 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
    *   Fully loaded taxonomy vocabulary object
    *
    * @return object
-   *   Fully loaded taxonomy term object of the last interted term into
+   *   Fully loaded taxonomy term object of the last inserted term into
    *   the specified vocabulary
    */
   protected function getLastTerm($vocabulary) {
@@ -247,7 +247,7 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
 }
 
 /**
- * Test "Synonyms friednly autocomplete" widget of Synonyms module.
+ * Test "Synonyms friendly autocomplete" widget of Synonyms module.
  */
 class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
 
@@ -929,7 +929,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
     parent::setUp($modules);
 
     $this->vocabulary = (object) array(
-      'name' => 'Test Synonyms Extactor',
+      'name' => 'Test Synonyms Extractor',
       'machine_name' => 'synonyms_extractor',
     );
     taxonomy_vocabulary_save($this->vocabulary);
@@ -981,7 +981,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
     taxonomy_term_save($term);
     $items = field_get_items('taxonomy_term', $term, $this->field['field_name']);
 
-    $synonyms = is_array($items) ? call_user_func($this->extractor . '::synonymsExtract', $items, $this->field, $this->instance, $term, 'taxonomy_term') : array();
+    $synonyms = is_array($items) ? call_user_func(array($this->extractor, 'synonymsExtract'), $items, $this->field, $this->instance, $term, 'taxonomy_term') : array();
     $this->assertTrue(count(array_intersect($etalon, $synonyms)) == count($etalon), 'Synonyms Extractor ' . $this->extractor . ' passed synonymsExtract() method: ' . $message);
     // Cleaning up.
     taxonomy_term_delete($term->tid);
@@ -1022,7 +1022,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', 'taxonomy_term')
         ->entityCondition('bundle', $this->vocabulary->machine_name);
-    call_user_func($this->extractor . '::processEntityFieldQuery', $tag, $efq, $this->field, $this->instance);
+    call_user_func(array($this->extractor, 'processEntityFieldQuery'), $tag, $efq, $this->field, $this->instance);
     $result = $efq->execute();
     $result = isset($result['taxonomy_term']) ? array_keys($result['taxonomy_term']) : array();
     // Asserting results of EntityFieldQuery.
@@ -1054,7 +1054,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
    *   SimpleTest assertion method
    */
   protected function assertMergeEntityAsSynonym($items, $synonym_entity, $synonym_entity_type, $etalon, $message = '') {
-    $extra_items = call_user_func($this->extractor . '::mergeEntityAsSynonym', $items, $this->field, $this->instance, $synonym_entity, $synonym_entity_type);
+    $extra_items = call_user_func(array($this->extractor, 'mergeEntityAsSynonym'), $items, $this->field, $this->instance, $synonym_entity, $synonym_entity_type);
     foreach ($etalon as $k => $v) {
       if (count(array_intersect($etalon[$k], $extra_items[$k])) != count($etalon[$k])) {
         $this->fail('Synonyms Extractor ' . $this->extractor . ' passed mergeEntityAsSynonym() method: ' . $message);
