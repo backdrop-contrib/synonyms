@@ -202,7 +202,7 @@ function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
       // Here we prefer some informative text for the default synonyms field
       // rather its label.
       if ($instance['field_name'] != SYNONYMS_DEFAULT_FIELD_NAME) {
-        $options[$instance['field_name']] = $instance['label'];
+        $options[$instance['field_name']] = check_plain($instance['label']);
       }
     }
   }
