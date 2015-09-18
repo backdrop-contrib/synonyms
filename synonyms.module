@@ -32,26 +32,17 @@ function synonyms_menu() {
  * Implements hook_taxonomy_term_update().
  */
 function synonyms_taxonomy_term_update($term) {
-  // If we notice at least some change in synonyms of this term, we want to
-  // trigger search re-indexing of nodes, where this term is referenced, since
-  // change in term synonyms affects nodes ranking in the search.
+  // Integration with Search module: if we notice at least some change in
+  // synonyms of this term, we want to trigger search re-indexing of nodes,
+  // where this term is referenced, since change in term synonyms affects nodes
+  // ranking in the search.
   if (isset($term->original)) {
     $current_synonyms = synonyms_get_raw($term);
     $previous_synonyms = synonyms_get_raw($term->original);
-    if (count($current_synonyms) != count($previous_synonyms)) {
-      // Schedule re-indexing, because amount of synonyms has changed.
+    $diff = array_diff($current_synonyms, $previous_synonyms);
+    if (!empty($diff) || count($current_synonyms) != count($previous_synonyms)) {
       module_load_include('inc', 'synonyms', 'synonyms.pages');
       synonyms_reindex_nodes_by_terms(array($term->tid));
-    }
-    else {
-      foreach ($current_synonyms as $k => $current_synonym) {
-        if ($current_synonyms[$k] != $previous_synonyms[$k]) {
-          // Schedule re-indexing, because some synonym has changed.
-          module_load_include('inc', 'synonyms', 'synonyms.pages');
-          synonyms_reindex_nodes_by_terms(array($term->tid));
-          break;
-        }
-      }
     }
   }
 }
@@ -651,7 +642,8 @@ function synonyms_vocabulary_settings_save($vocabulary, $settings) {
   // search re-indexing on all the nodes that reference at least 1 term from
   // this vocabulary.
   $previous_settings = synonyms_vocabulary_settings($vocabulary);
-  if (implode('', $settings['synonyms']) != implode('', $previous_settings['synonyms'])) {
+  $diff = array_diff($settings['synonyms'], $previous_settings['synonyms']);
+  if (!empty($diff) || count($settings['synonyms']) != count($previous_settings['synonyms'])) {
     module_load_include('inc', 'synonyms', 'synonyms.pages');
     synonyms_reindex_nodes_by_vocabulary($vocabulary);
   }
