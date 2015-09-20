@@ -18,10 +18,25 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
   protected $admin;
 
   /**
+   * Array of fully loaded vocabulary entities to be used in this test.
+   *
+   * Array is keyed by the corresponding vocabulary's machine name, whereas its
+   * value represents whether originally the vocabulary should have the default
+   * synonyms field enabled as a source of synonyms.
+   *
+   * @var array
+   */
+  protected $vocabularies = array(
+    'enabled' => TRUE,
+    'disabled' => FALSE,
+  );
+
+  /**
    * SetUp method.
    */
-  public function setUp() {
-    parent::setUp(array('synonyms'));
+  public function setUp($modules = array()) {
+    $modules[] = 'synonyms';
+    parent::setUp($modules);
 
     $this->admin = $this->drupalCreateUser(array(
       'administer taxonomy',
@@ -29,6 +44,24 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
       'bypass node access',
       'search content',
     ));
+
+    // Creating vocabularies.
+    $this->drupalLogin($this->admin);
+    foreach ($this->vocabularies as $k => $v) {
+      $vocabulary = (object) array(
+        'name' => $this->randomName(),
+        'machine_name' => $k,
+        'description' => $this->randomName(),
+      );
+      taxonomy_vocabulary_save($vocabulary);
+      if ($v) {
+        synonyms_vocabulary_settings_save($vocabulary, array(
+          'synonyms' => array(SYNONYMS_DEFAULT_FIELD_NAME),
+        ));
+      }
+
+      $this->vocabularies[$k] = $vocabulary;
+    }
   }
 
   /**
@@ -42,18 +75,11 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
    *   the specified vocabulary
    */
   protected function getLastTerm($vocabulary) {
-    drupal_static_reset();
-    $tree = taxonomy_get_tree($vocabulary->vid);
-    $max = 0;
-    $term = NULL;
-    foreach ($tree as $v) {
-      if ($v->tid > $max) {
-        $max = $v->tid;
-        $term = $v;
-      }
-    }
-    $term = entity_load_unchanged('taxonomy_term', $term->tid);
-    return $term;
+    $tid = db_select('taxonomy_term_data', 't');
+    $tid->addExpression('MAX(t.tid)');
+    $tid->condition('vid', $vocabulary->vid);
+    $tid = $tid->execute()->fetchField();
+    return entity_load_unchanged('taxonomy_term', $tid);
   }
 }
 
@@ -61,11 +87,6 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
  * Test Synonyms functionality of synonyms module.
  */
 class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
-
-  protected $vocabularies = array(
-    'enabled' => TRUE,
-    'disabled' => FALSE,
-  );
 
   /**
    * GetInfo method.
@@ -76,28 +97,6 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
       'description' => 'Ensure that the feature "synonyms" works correctly with taxonomy terms.',
       'group' => 'Synonyms',
     );
-  }
-
-  /**
-   * SetUp method.
-   */
-  public function setUp() {
-    parent::setUp();
-
-    // Creating vocabularies.
-    $this->drupalLogin($this->admin);
-    foreach ($this->vocabularies as $k => $v) {
-      $name = $this->randomName();
-      $this->drupalPost('admin/structure/taxonomy/add', array(
-        'name' => $name,
-        'machine_name' => $k,
-        'description' => $this->randomName(),
-        'synonyms[synonyms][' . SYNONYMS_DEFAULT_FIELD_NAME . ']' => $v,
-      ), 'Save');
-      $this->vocabularies[$k] = taxonomy_vocabulary_machine_name_load($k);
-    }
-    // Flushing cache.
-    _field_info_collate_fields(TRUE);
   }
 
   /**
@@ -131,45 +130,54 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     // Creating terms for testing synonyms_get_term_synonyms().
     $synonym1 = $this->randomName();
     $synonym2 = $this->randomName();
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
-      'name' => $this->randomName(),
-      'description[value]' => $this->randomName(),
-    ), 'Save');
-    $no_synonyms_term = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
-      'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym1,
-    ), 'Save');
-    $one_synonym_term = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
-      'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym1,
-    ), 'Add another item');
-    $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $synonym2,
-    ), 'Save');
-    $two_synonyms_term = $this->getLastTerm($this->vocabularies['enabled']);
 
-    // Creating an identical parent term in order to test
-    // $parent parameter in our functions.
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    $no_synonyms_term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
+      'name' => $this->randomName(),
+      'description' => $this->randomName(),
+    );
+    taxonomy_term_save($no_synonyms_term);
+
+    $one_synonym_term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
+      'name' => $this->randomName(),
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $synonym1),
+      )),
+    );
+    taxonomy_term_save($one_synonym_term);
+
+    $two_synonyms_term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
+      'name'=> $this->randomName(),
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $synonym1),
+        array('value' => $synonym2),
+      )),
+    );
+    taxonomy_term_save($two_synonyms_term);
+
+    // Creating an identical parent term in order to test $parent parameter in
+    // our functions.
+    $term_parent = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $name,
-      'description[value]' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym,
-    ), 'Add another item');
-    $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $parent_synonym,
-    ), 'Save');
-    $term_parent = $this->getLastTerm($this->vocabularies['enabled']);
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $synonym),
+        array('value' => $parent_synonym),
+      )),
+    );
+    taxonomy_term_save($term_parent);
 
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $name,
-      'description[value]' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $synonym,
-      'parent[]' => array($term_parent->tid),
-    ), 'Save');
-
-    $term = $this->getLastTerm($this->vocabularies['enabled']);
+      'parent' => $term_parent->tid,
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $synonym),
+      )),
+    );
+    taxonomy_term_save($term);
 
     $this->drupalGet('taxonomy/term/' . $term->tid);
     // Asserting the presence of synonym string.
@@ -244,7 +252,7 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $new_term = entity_load('taxonomy_term', array($tid), array(), TRUE);
     $new_term = array_pop($new_term);
     $this->assertEqual($parent_synonym, $new_term->name, 'Successfully called synonyms_add_term_by_synonym() on an new title and a new term was created.');
-    $this->assertFalse(in_array($new_term->tid, array($term->tid, $term_parent->tid)), 'Successfully called synonyms_add_term_by_synonym() on the synonyn of parent term. New term was created (because the vocabulary has disabled "synonyms" feature)');
+    $this->assertFalse(in_array($new_term->tid, array($term->tid, $term_parent->tid)), 'Successfully called synonyms_add_term_by_synonym() on the synonym of parent term. New term was created (because the vocabulary has disabled "synonyms" feature)');
   }
 }
 
@@ -252,18 +260,6 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
  * Test "Synonyms friendly autocomplete" widget of Synonyms module.
  */
 class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
-
-  /**
-   * Array of fully loaded vocabulary entities to be used in this test.
-   *
-   * Array is keyed by the corresponding vocabulary's machine name.
-   *
-   * @var array
-   */
-  protected $vocabularies = array(
-    'enabled' => TRUE,
-    'disabled' => FALSE,
-  );
 
   /**
    * Array of fully loaded taxonomy term entities to be used in this test.
@@ -306,20 +302,8 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
   /**
    * SetUp method.
    */
-  public function setUp() {
-    parent::setUp();
-    // Creating vocabularies.
-    $this->drupalLogin($this->admin);
-    foreach ($this->vocabularies as $k => $v) {
-      $name = $this->randomName();
-      $this->drupalPost('admin/structure/taxonomy/add', array(
-        'name' => $name,
-        'machine_name' => $k,
-        'description' => $this->randomName(),
-        'synonyms[synonyms][' . SYNONYMS_DEFAULT_FIELD_NAME . ']' => $v,
-      ), 'Save');
-      $this->vocabularies[$k] = taxonomy_vocabulary_machine_name_load($k);
-    }
+  public function setUp($modules = array()) {
+    parent::setUp($modules);
 
     // Creating a test content type.
     $this->drupalPost('admin/structure/types/add', array(
@@ -329,83 +313,133 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
 
     // Attaching each vocabulary term reference field to the new content type.
     foreach ($this->vocabularies as $k => $v) {
-      $this->drupalPost('admin/structure/types/manage/synonyms_test_content/fields', array(
-        'fields[_add_new_field][label]' => 'Synonym Terms ' . $k,
-        'fields[_add_new_field][field_name]' => 'synonyms_term_' . $k,
-        'fields[_add_new_field][type]' => 'taxonomy_term_reference',
-        'fields[_add_new_field][widget_type]' => 'synonyms_autocomplete',
-      ), 'Save');
-      $this->drupalPost(NULL, array(
-        'field[settings][allowed_values][0][vocabulary]' => $v->machine_name,
-      ), 'Save field settings');
-      $this->drupalPost(NULL, array(
-        'field[cardinality]' => FIELD_CARDINALITY_UNLIMITED,
-      ), 'Save settings');
+      $field = array(
+        'type' => 'taxonomy_term_reference',
+        'field_name' => 'synonyms_term_' . $k,
+        'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+        'settings' => array(
+          'allowed_values' => array(
+            array(
+              'vocabulary' => $v->machine_name,
+              'parent' => 0,
+            ),
+          ),
+        ),
+      );
+      $field = field_create_field($field);
+
+      $instance = array(
+        'field_name' => $field['field_name'],
+        'entity_type' => 'node',
+        'bundle' => $this->bundle,
+        'label' => 'Synonym Terms ' . $k,
+        'widget' => array(
+          'type' => 'synonyms_autocomplete',
+        ),
+      );
+      $instance = field_create_instance($instance);
     }
-    // Flushing static cache.
-    _field_info_collate_fields(TRUE);
+
+    drupal_static_reset();
 
     // Now creating taxonomy tree for each vocabulary.
     // For synonym-disabled vocabulary just a few terms is good enough.
     $name = $this->randomName();
-    $this->drupalPost('admin/structure/taxonomy/disabled/add', array(
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['disabled']->vid,
       'name' => $name,
-    ), 'Save');
-    $this->terms['disabled']['term1'] = $this->getLastTerm($this->vocabularies['disabled']);
+    );
+    taxonomy_term_save($term);
+    $this->terms['disabled']['term1'] = $term;
+
     $name .= $this->randomName();
-    $this->drupalPost('admin/structure/taxonomy/disabled/add', array(
-      'name' => $name,
-    ), 'Save');
-    $this->terms['disabled']['term1_longer_name'] = $this->getLastTerm($this->vocabularies['disabled']);
-    $this->drupalPost('admin/structure/taxonomy/disabled/add', array(
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['disabled']->vid,
+      'name'=> $name,
+    );
+    taxonomy_term_save($term);
+    $this->terms['disabled']['term1_longer_name'] = $term;
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['disabled']->vid,
       'name' => $this->randomName(),
-    ), 'Save');
-    $this->terms['disabled']['term2'] = $this->getLastTerm($this->vocabularies['disabled']);
+    );
+    taxonomy_term_save($term);
+    $this->terms['disabled']['term2'] = $term;
 
     // For synonym-enabled vocabulary we have to create such a set of input,
     // that would cover all possible branches of the autocomplete callback.
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['no_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['no_synonyms'] = $term;
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['one_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $this->randomName()),
+      )),
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['one_synonym'] = $term;
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $this->randomName(),
-    ), 'Add another item');
-    $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['two_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $this->randomName()),
+        array('value' => $this->randomName()),
+      )),
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['two_synonyms'] = $term;
+
     $name = $this->randomName();
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $name,
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $name . $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['name_similar_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $name . $this->randomName()),
+      )),
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['name_similar_synonym'] = $term;
+
     $name = 'similar_synonyms_';
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $name . $this->randomName(),
-    ), 'Add another item');
-    $this->drupalPost(NULL, array(
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][1][value]' => $name . $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['similar_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $name . $this->randomName()),
+        array('value' => $name . $this->randomName()),
+      )),
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['similar_synonyms'] = $term;
+
     $name = 'one_term_name_another_synonym_';
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $name . $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['name_another_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
-    $this->drupalPost('admin/structure/taxonomy/enabled/add', array(
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['name_another_synonym'] = $term;
+
+    $term = (object) array(
+      'vid' => $this->vocabularies['enabled']->vid,
       'name' => $this->randomName(),
-      SYNONYMS_DEFAULT_FIELD_NAME . '[' . LANGUAGE_NONE . '][0][value]' => $name . $this->randomName(),
-    ), 'Save');
-    $this->terms['enabled']['synonym_another_name'] = $this->getLastTerm($this->vocabularies['enabled']);
+      SYNONYMS_DEFAULT_FIELD_NAME => array(LANGUAGE_NONE => array(
+        array('value' => $name . $this->randomName()),
+      )),
+    );
+    taxonomy_term_save($term);
+    $this->terms['enabled']['synonym_another_name'] = $term;
   }
 
   /**
@@ -418,14 +452,14 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    */
   public function testAutoCreation() {
     // Trying enabled auto creation.
-    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/synonyms_term_enabled', array(
       'instance[widget][settings][auto_creation]' => TRUE,
     ), 'Save settings');
 
     $new_term_name = $this->randomName();
     $this->drupalPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['enabled']['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
+      'synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['enabled']['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
     $this->assertText($this->terms['enabled']['no_synonyms']->name, 'Existing term was assigned to the new node');
     $this->assertText($new_term_name, 'Auto created term was assigned to the new node when Auto creation is on.');
@@ -434,14 +468,14 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     $this->assertEqual($term->name, $new_term_name, 'The auto created term has been created when Auto creation is on.');
 
     // Trying disabled auto creation.
-    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/synonyms_term_enabled', array(
       'instance[widget][settings][auto_creation]' => FALSE,
     ), 'Save settings');
 
     $new_term_name = $this->randomName();
     $this->drupalPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['enabled']['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
+      'synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['enabled']['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['enabled']['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
     $this->assertText($this->terms['enabled']['no_synonyms']->name, 'Existing term was assigned to the new node');
     $this->assertNoText($new_term_name, 'Auto created term was not assigned to the new node when Auto creation is off.');
@@ -511,7 +545,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     );
     $assertions[] = array(
       'vocabulary' => 'enabled',
-      'input' => $terms['one_synonym']->name . ',' . $terms['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['safe_value'],
+      'input' => $terms['one_synonym']->name . ',' . $terms['one_synonym']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value'],
       'response' => array(),
       'message' => 'Submitting a synonym of a term over again into an enabled synonyms vocabulary',
     );
@@ -528,8 +562,8 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
         foreach ($synonyms as $delta => $item) {
           $assertions[] = array(
             'vocabulary' => 'enabled',
-            'input' => drupal_strtolower(drupal_substr($item['safe_value'], 1, -1)),
-            'response' => array($terms[$k]->name => $this->synonymAutocompleteResult($terms[$k], $item['safe_value'])),
+            'input' => drupal_strtolower(drupal_substr($item['value'], 1, -1)),
+            'response' => array($terms[$k]->name => $this->synonymAutocompleteResult($terms[$k], $item['value'])),
             'message' => 'Submitting a name similar to synonym#' . $delta . ' of the term ' . $k . ' into an enabled synonyms vocabulary',
           );
         }
@@ -540,7 +574,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
       'input' => 'one_term_name_another_synonym_',
       'response' => array(
         $terms['name_another_synonym']->name => $terms['name_another_synonym']->name,
-        $terms['synonym_another_name']->name => $this->synonymAutocompleteResult($terms['synonym_another_name'], $terms['synonym_another_name']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['safe_value']),
+        $terms['synonym_another_name']->name => $this->synonymAutocompleteResult($terms['synonym_another_name'], $terms['synonym_another_name']->{SYNONYMS_DEFAULT_FIELD_NAME}[LANGUAGE_NONE][0]['value']),
       ),
       'message' => 'Submitting a keyword similar to name of one term and synonym of another into an enabled synonyms vocabulary yields both included in the results',
     );
@@ -553,12 +587,12 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
   /**
    * Test 'Suggestions Size' setting of synonyms-friendly autocomplete widget.
    */
-  function testWidgetSettingsSuggestionSize() {
+  public function testWidgetSettingsSuggestionSize() {
     $suggestion_size = 1;
-    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_disabled', array(
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/synonyms_term_disabled', array(
       'instance[widget][settings][suggestion_size]' => $suggestion_size,
     ), 'Save settings');
-    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/synonyms_term_enabled', array(
       'instance[widget][settings][suggestion_size]' => $suggestion_size,
     ), 'Save settings');
 
@@ -595,7 +629,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
   /**
    * Test 'Suggest only one entry per term' setting of autocomplete widget.
    */
-  function testWidgetSettingsSuggestOnlyUnique() {
+  public function testWidgetSettingsSuggestOnlyUnique() {
     $assertions = array();
 
     // Testing disabled "Suggest only one entry per term" setting.
@@ -624,10 +658,10 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
     }
 
     // Testing enabled "Suggest only one entry per term" setting.
-    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_disabled', array(
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/synonyms_term_disabled', array(
       'instance[widget][settings][suggest_only_unique]' => TRUE,
     ), 'Save settings');
-    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/field_synonyms_term_enabled', array(
+    $this->drupalPost('admin/structure/types/manage/synonyms-test-content/fields/synonyms_term_enabled', array(
       'instance[widget][settings][suggest_only_unique]' => TRUE,
     ), 'Save settings');
 
@@ -667,8 +701,8 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    *     message - Drupal assertion message to be displayed on test results
    *                 page
    */
-  protected function assertAutocompleteMenuPath($assertion) {
-    $response = $this->drupalGet('synonyms/autocomplete/field_synonyms_term_' . $assertion['vocabulary'] . '/' . $this->entity_type . '/' . $this->bundle . '/' . $assertion['input']);
+  public function assertAutocompleteMenuPath($assertion) {
+    $response = $this->drupalGet('synonyms/autocomplete/synonyms_term_' . $assertion['vocabulary'] . '/' . $this->entity_type . '/' . $this->bundle . '/' . $assertion['input']);
     if (!$response) {
       $this->fail($assertion['message'], 'Autocomplete Menu Path');
       return;
@@ -693,7 +727,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
    * @return string
    *   Formatted autocomplete result
    */
-  protected function synonymAutocompleteResult($term, $synonym) {
+  public function synonymAutocompleteResult($term, $synonym) {
     return t('@synonym, synonym of %term', array('@synonym' => $synonym, '%term' => $term->name));
   }
 }
@@ -702,6 +736,7 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
  * Test Synonyms module integration with Drupal search functionality.
  */
 class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
+
   protected $vocabularies = array(
     'enabled' => TRUE,
   );
@@ -720,20 +755,8 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
   /**
    * SetUp method.
    */
-  public function setUp() {
-    parent::setUp();
-    // Creating vocabularies.
-    $this->drupalLogin($this->admin);
-    foreach ($this->vocabularies as $k => $v) {
-      $name = $this->randomName();
-      $this->drupalPost('admin/structure/taxonomy/add', array(
-        'name' => $name,
-        'machine_name' => $k,
-        'description' => $this->randomName(),
-        'synonyms[synonyms][' . SYNONYMS_DEFAULT_FIELD_NAME . ']' => $v,
-      ), 'Save');
-      $this->vocabularies[$k] = taxonomy_vocabulary_machine_name_load($k);
-    }
+  public function setUp($modules = array()) {
+    parent::setUp($modules);
 
     // Creating a test content type.
     $this->drupalPost('admin/structure/types/add', array(
@@ -743,21 +766,33 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
 
     // Attaching each vocabulary term reference field to the new content type.
     foreach ($this->vocabularies as $k => $v) {
-      $this->drupalPost('admin/structure/types/manage/synonyms_test_content/fields', array(
-        'fields[_add_new_field][label]' => 'Synonym Terms ' . $k,
-        'fields[_add_new_field][field_name]' => 'synonyms_term_' . $k,
-        'fields[_add_new_field][type]' => 'taxonomy_term_reference',
-        'fields[_add_new_field][widget_type]' => 'synonyms_autocomplete',
-      ), 'Save');
-      $this->drupalPost(NULL, array(
-        'field[settings][allowed_values][0][vocabulary]' => $v->machine_name,
-      ), 'Save field settings');
-      $this->drupalPost(NULL, array(
-        'field[cardinality]' => FIELD_CARDINALITY_UNLIMITED,
-      ), 'Save settings');
+      $field = array(
+        'type' => 'taxonomy_term_reference',
+        'field_name' => 'synonyms_term_' . $k,
+        'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+        'settings' => array(
+          'allowed_values' => array(
+            array(
+              'vocabulary' => $v->machine_name,
+              'parent' => 0,
+            ),
+          ),
+        ),
+      );
+      $field = field_create_field($field);
+
+      $instance = array(
+        'field_name' => $field['field_name'],
+        'entity_type' => 'node',
+        'bundle' => 'synonyms_test_content',
+        'label' => 'Synonym Terms ' . $k,
+        'widget' => array(
+          'type' => 'synonyms_autocomplete',
+        ),
+      );
+
+      $instance = field_create_instance($instance);
     }
-    // Flushing static cache.
-    _field_info_collate_fields(TRUE);
   }
 
   /**
@@ -777,7 +812,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
       'name' => $this->randomName(),
     );
     taxonomy_term_save($term);
-    $terms['no_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
+    $terms['no_synonyms'] = $term;
 
     $term = (object) array(
       'vid' => $this->vocabularies['enabled']->vid,
@@ -789,7 +824,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
       )
     );
     taxonomy_term_save($term);
-    $terms['one_synonym'] = $this->getLastTerm($this->vocabularies['enabled']);
+    $terms['one_synonym'] = $term;
 
     $term = (object) array(
       'vid' => $this->vocabularies['enabled']->vid,
@@ -802,15 +837,19 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
       )
     );
     taxonomy_term_save($term);
-    $terms['two_synonyms'] = $this->getLastTerm($this->vocabularies['enabled']);
+    $terms['two_synonyms'] = $term;
 
     // Creating a node, which references to all the terms we have.
-    $title = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
-      'title' => $title,
-      'field_synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $terms['no_synonyms']->name . ', ' . $terms['one_synonym']->name . ', ' . $terms['two_synonyms']->name,
-    ), 'Save');
-    $node = $this->drupalGetNodeByTitle($title);
+    $node = (object) array(
+      'type' => 'synonyms_test_content',
+      'title' => $this->randomName(),
+      'synonyms_term_enabled' => array(LANGUAGE_NONE => array(
+        array('tid' => $terms['no_synonyms']->tid),
+        array('tid' => $terms['one_synonym']->tid),
+        array('tid' => $terms['two_synonyms']->tid),
+      )),
+    );
+    node_save($node);
 
     // Rebuilding Search index.
     $this->cronRun();
@@ -886,15 +925,7 @@ class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
 /**
  * Base class for all test cases that test Synonyms Extractor classes.
  */
-abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
-
-  /**
-   * Taxonomy vocabulary object on whose term all synonyms extracting tests will
-   * occur.
-   *
-   * @var object
-   */
-  protected $vocabulary;
+abstract class AbstractSynonymsExtractorWebTestCase extends SynonymsWebTestCase {
 
   /**
    * Class name of a synonyms extractor that is being tested.
@@ -918,25 +949,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
   protected $instance;
 
   /**
-   * SetUp method.
-   *
-   * @param array $modules
-   *   Array of extra modules to install for testing a particular synonyms
-   *   extractor
-   */
-  public function setUp($modules = array()) {
-    array_unshift($modules, 'synonyms');
-    parent::setUp($modules);
-
-    $this->vocabulary = (object) array(
-      'name' => 'Test Synonyms Extractor',
-      'machine_name' => 'synonyms_extractor',
-    );
-    taxonomy_vocabulary_save($this->vocabulary);
-  }
-
-  /**
-   * Completely set field in the tested vocabulary.
+   * Completely set up a field in the tested vocabulary.
    *
    * Create a field in Field API (if does not exist yet), then create an
    * instance and relate it to our tested vocabulary. Lastly enable this field
@@ -950,11 +963,11 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
   protected function addFieldInstance($field, $instance) {
     $field = field_create_field($field);
     $instance['entity_type'] = 'taxonomy_term';
-    $instance['bundle'] = field_extract_bundle('taxonomy_term', $this->vocabulary);
+    $instance['bundle'] = field_extract_bundle('taxonomy_term', $this->vocabularies['enabled']);
     field_create_instance($instance);
-    $settings = synonyms_vocabulary_settings($this->vocabulary);
+    $settings = synonyms_vocabulary_settings($this->vocabularies['enabled']);
     $settings['synonyms'][] = $field['field_name'];
-    synonyms_vocabulary_settings_save($this->vocabulary, $settings);
+    synonyms_vocabulary_settings_save($this->vocabularies['enabled'], $settings);
     $this->field = $field;
     $this->instance = $instance;
   }
@@ -964,23 +977,23 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
    *
    * @param array $items
    *   Array of field items to be saved in tested term
-   * @param array $etalon
+   * @param array $standard
    *   Expected return of synonymsExtract() method of class
    * @param string $message
    *   Any custom message to be added to the standard one and passed to
    *   SimpleTest assertion method
    */
-  protected function assertSynonymsExtract($items, $etalon, $message = '') {
+  protected function assertSynonymsExtract($items, $standard, $message = '') {
     $term = (object) array(
       'name' => $this->randomName(),
-      'vid' => $this->vocabulary->vid,
+      'vid' => $this->vocabularies['enabled']->vid,
     );
     $term->{$this->field['field_name']} = $items;
     taxonomy_term_save($term);
     $items = field_get_items('taxonomy_term', $term, $this->field['field_name']);
 
     $synonyms = is_array($items) ? call_user_func(array($this->extractor, 'synonymsExtract'), $items, $this->field, $this->instance, $term, 'taxonomy_term') : array();
-    $this->assertTrue(count(array_intersect($etalon, $synonyms)) == count($etalon), 'Synonyms Extractor ' . $this->extractor . ' passed synonymsExtract() method: ' . $message);
+    $this->assertTrue(count(array_intersect($standard, $synonyms)) == count($standard), 'Synonyms Extractor ' . $this->extractor . ' passed synonymsExtract() method: ' . $message);
     // Cleaning up.
     taxonomy_term_delete($term->tid);
   }
@@ -992,10 +1005,10 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
    *   Array of meta data. Each subarray represents a single term and whether it
    *   is expected to be included in the results of EntityFieldQuery. Should
    *   have the following structure:
-   *     items - array of field items. Terms will be automatically created with
-   *       those items
-   *     expected - bool, whether the created term should be expected in the
-   *       results of EntityFieldQuery
+   *   - items: (array) Array of field items. Terms will be automatically
+   *     created with those items
+   *   - expected: (bool) Whether the created term should be expected in the
+   *     results of EntityFieldQuery
    * @param string $tag
    *   Corresponding parameter to be passed to processEntityFieldQuery() method
    * @param string $message
@@ -1008,7 +1021,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
     foreach ($meta_data as $v) {
       $term = (object) array(
         'name' => $this->randomName(),
-        'vid' => $this->vocabulary->vid,
+        'vid' => $this->vocabularies['enabled']->vid,
       );
       taxonomy_term_save($term);
       $term->{$this->field['field_name']} = $v['items'];
@@ -1019,7 +1032,7 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
     // Preparing and running EntityFieldQuery.
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', 'taxonomy_term')
-        ->entityCondition('bundle', $this->vocabulary->machine_name);
+        ->entityCondition('bundle', $this->vocabularies['enabled']->machine_name);
     call_user_func(array($this->extractor, 'processEntityFieldQuery'), $tag, $efq, $this->field, $this->instance);
     $result = $efq->execute();
     $result = isset($result['taxonomy_term']) ? array_keys($result['taxonomy_term']) : array();
@@ -1045,21 +1058,77 @@ abstract class AbstractSynonymsExtractorWebTestCase extends DrupalWebTestCase {
    *   Parameter will be passed directly to the extractor class method
    * @param string $synonym_entity_type
    *   Parameter will be passed directly to the extractor class method
-   * @param array $etalon
+   * @param array $standard
    *   Array that is expected to be returned by the tested method
    * @param string $message
    *   Any custom message to be added to the standard one and passed to
    *   SimpleTest assertion method
    */
-  protected function assertMergeEntityAsSynonym($items, $synonym_entity, $synonym_entity_type, $etalon, $message = '') {
+  protected function assertMergeEntityAsSynonym($items, $synonym_entity, $synonym_entity_type, $standard, $message = '') {
+    $message = 'Synonyms Extractor ' . $this->extractor . ' passed mergeEntityAsSynonym() method: ' . $message;
     $extra_items = call_user_func(array($this->extractor, 'mergeEntityAsSynonym'), $items, $this->field, $this->instance, $synonym_entity, $synonym_entity_type);
-    foreach ($etalon as $k => $v) {
-      if (count(array_intersect($etalon[$k], $extra_items[$k])) != count($etalon[$k])) {
-        $this->fail('Synonyms Extractor ' . $this->extractor . ' passed mergeEntityAsSynonym() method: ' . $message);
+    foreach ($standard as $k => $v) {
+      if (count(array_intersect($standard[$k], $extra_items[$k])) != count($standard[$k])) {
+        $this->fail($message);
         return;
       }
     }
-    $this->pass('Synonyms Extractor ' . $this->extractor . ' passed mergeEntityAsSynonym() method: ' . $message);
+    $this->pass($message);
+  }
+
+
+  /**
+   * Test synonymFind method of class.
+   *
+   * @param array $meta_data
+   *   Array of meta data. Each subarray represents a single term and whether it
+   *   is expected to be included in the results of EntityFieldQuery. Should
+   *   have the following structure:
+   *   - items: (array) Array of field items. Terms will be automatically
+   *     created with those items
+   *   - expected: (bool) Whether the created term should be expected in the
+   *     results of EntityFieldQuery
+   * @param string $synonym
+   *   Parameter will be passed directly to the extractor class method
+   * @param string $message
+   *   Any custom message to be added tot he standard one and passed to
+   *   SimpleTest assertion method
+   */
+  protected function assertSynonymFind($meta_data, $synonym, $message = '') {
+    $message = 'Synonyms Extractor ' . $this->extractor . ' passed synonymFind() method: ' . $message;
+
+    $terms = array();
+    $expected_count = 0;
+    foreach ($meta_data as $v) {
+      $term = (object) array(
+        'name' => $this->randomName(),
+        'vid' => $this->vocabularies['enabled']->vid,
+        $this->field['field_name'] => $v['items'],
+      );
+      taxonomy_term_save($term);
+      $term->expected = $v['expected'];
+      if ($term->expected) {
+        $expected_count++;
+      }
+      $terms[] = $term;
+    }
+
+    $return = call_user_func(array($this->extractor, 'synonymFind'), $synonym, $this->field, $this->instance, 'taxonomy_term', field_extract_bundle('taxonomy_term', $this->vocabularies['enabled']));
+
+    $success = count($return) == $expected_count;
+
+    foreach ($terms as $term) {
+      if ($term->expected xor in_array($term->tid, $return)) {
+        $success = FALSE;
+      }
+    }
+
+    $this->assertTrue($success, $message);
+
+    // Cleaning up.
+    foreach ($terms as $term) {
+      taxonomy_term_delete($term->tid);
+    }
   }
 }
 
@@ -1099,7 +1168,7 @@ class SynonymsSynonymsExtractorWebTestCase extends AbstractSynonymsExtractorWebT
     ), array(
       'field_name' => 'text',
       'entity_type' => 'taxonomy_term',
-      'bundle' => $this->vocabulary->machine_name,
+      'bundle' => $this->vocabularies['enabled']->machine_name,
       'label' => $this->randomName(),
     ));
 
@@ -1148,6 +1217,47 @@ class SynonymsSynonymsExtractorWebTestCase extends AbstractSynonymsExtractorWebT
     );
     node_save($node);
     $this->assertMergeEntityAsSynonym(array(), $node, 'node', array(array('value' => $node->title)), 'on a node entity.');
+
+    // Testing synonymFind() method.
+    $this->assertSynonymFind(array(), $this->randomName(), 'on empty field.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(),
+      'expected' => FALSE,
+    );
+    $this->assertSynonymFind($meta_data, $this->randomName(), 'on a field without synonyms.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('value' => $this->randomName()),
+        ),
+      ),
+      'expected' => FALSE,
+    );
+    $this->assertSynonymFind($meta_data, $this->randomName(), 'on a field with a synonym, but when searching for another keyword.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('value' => $this->randomName()),
+          array('value' => $this->randomName()),
+        ),
+      ),
+      'expected' => FALSE,
+    );
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('value' => $this->randomName()),
+        ),
+      ),
+      'expected' => TRUE,
+    );
+    $this->assertSynonymFind($meta_data, $meta_data[1]['items'][LANGUAGE_NONE][0]['value'], 'on a field with synonym, when searching for this synonym.');
   }
 
 }
@@ -1210,7 +1320,7 @@ class TaxonomySynonymsExtractorWebTestCase extends AbstractSynonymsExtractorWebT
     ), array(
       'field_name' => 'term',
       'entity_type' => 'taxonomy_term',
-      'bundle' => $this->vocabulary->machine_name,
+      'bundle' => $this->vocabularies['enabled']->machine_name,
       'label' => $this->randomName(),
     ));
 
@@ -1257,6 +1367,48 @@ class TaxonomySynonymsExtractorWebTestCase extends AbstractSynonymsExtractorWebT
     // Testing mergeEntityAsSynonym() method.
     $synonym_term = $this->createSynonymTerm();
     $this->assertMergeEntityAsSynonym(array(), $synonym_term, 'taxonomy_term', array(array('tid' => $synonym_term->tid)), 'on a term from referenced vocabulary.');
+
+    // Testing synonymFind() method.
+    $this->assertSynonymFind(array(), $this->randomName(), 'on empty field.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(),
+      'expected' => FALSE,
+    );
+    $this->assertSynonymFind($meta_data, $this->randomName(), 'on a field without synonyms.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('tid' => $this->createSynonymTerm()->tid),
+        ),
+      ),
+      'expected' => FALSE,
+    );
+    $this->assertSynonymFind($meta_data, $this->randomName(), 'on a field with a synonym, but when searching for another keyword.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('tid' => $this->createSynonymTerm()->tid),
+          array('tid' => $this->createSynonymTerm()->tid),
+        ),
+      ),
+      'expected' => FALSE,
+    );
+    $synonym_term = $this->createSynonymTerm();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('tid' => $synonym_term->tid),
+        ),
+      ),
+      'expected' => TRUE,
+    );
+    $this->assertSynonymFind($meta_data, $synonym_term->name, 'on a field with synonym, when searching for this synonym.');
   }
 
   /**
@@ -1332,7 +1484,7 @@ class EntityReferenceSynonymsExtractorWebTestCase extends AbstractSynonymsExtrac
     ), array(
       'field_name' => 'reference',
       'entity_type' => 'taxonomy_term',
-      'bundle' => $this->vocabulary->machine_name,
+      'bundle' => $this->vocabularies['enabled']->machine_name,
       'label' => $this->randomName(),
     ));
 
@@ -1383,6 +1535,48 @@ class EntityReferenceSynonymsExtractorWebTestCase extends AbstractSynonymsExtrac
     // Testing mergeEntityAsSynonym() method.
     $node = $this->createNode();
     $this->assertMergeEntityAsSynonym(array(), $node, 'node', array(array('target_id' => $node->nid)), 'on a node.');
+
+    // Testing synonymFind() method.
+    $this->assertSynonymFind(array(), $this->randomName(), 'on empty field.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(),
+      'expected' => FALSE,
+    );
+    $this->assertSynonymFind($meta_data, $this->randomName(), 'on a field without synonyms.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('target_id' => entity_id('node', $this->createNode())),
+        ),
+      ),
+      'expected' => FALSE,
+    );
+    $this->assertSynonymFind($meta_data, $this->randomName(), 'on a field with a synonym, but when searching for another keyword.');
+
+    $meta_data = array();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('target_id' => entity_id('node', $this->createNode())),
+          array('target_id' => entity_id('node', $this->createNode())),
+        ),
+      ),
+      'expected' => FALSE,
+    );
+    $synonym_entity = $this->createNode();
+    $meta_data[] = array(
+      'items' => array(
+        LANGUAGE_NONE => array(
+          array('target_id' => entity_id('node', $synonym_entity)),
+        ),
+      ),
+      'expected' => TRUE,
+    );
+    $this->assertSynonymFind($meta_data, entity_label('node', $synonym_entity), 'on a field with synonym, when searching for this synonym.');
   }
 
   /**

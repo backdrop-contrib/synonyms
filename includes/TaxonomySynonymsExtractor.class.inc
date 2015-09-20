@@ -5,6 +5,9 @@
  * Enables Taxonomy Term Reference field types to be source of synonyms.
  */
 
+/*
+ * Definition of TaxonomySynonymsExtractor class.
+ */
 class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
 
   public static function fieldTypesSupported() {
@@ -32,17 +35,11 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     // vocabulary and trying to see if there is a match by term's name.
     $tids = array();
 
-    foreach ($field['settings']['allowed_values'] as $settings) {
-      $efd = new EntityFieldQuery();
-      $efd->entityCondition('bundle', $settings['vocabulary'])
-        ->entityCondition('entity_type', 'taxonomy_term')
-        ->propertyCondition('name', '%' . $tag . '%', 'LIKE');
-      $result = $efd->execute();
-      if (isset($result['taxonomy_term'])) {
-        foreach ($result['taxonomy_term'] as $tid) {
-          $tids[] = $tid->tid;
-        }
-      }
+    $efq = self::targetTermEntityFieldQuery($field, $instance);
+    $efq->propertyCondition('name', '%' . $tag . '%', 'LIKE');
+    $result = $efq->execute();
+    if (isset($result['taxonomy_term'])) {
+      $tids = array_keys($result['taxonomy_term']);
     }
 
     // Now we have tids of terms from the referenced vocabulary which names
@@ -90,5 +87,54 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     return array(array(
       'tid' => $synonym_entity->tid,
     ));
+  }
+
+  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+    $efq = self::targetTermEntityFieldQuery($field, $instance);
+    $efq->propertyCondition('name', $synonym);
+    $result = $efq->execute();
+    if (isset($result['taxonomy_term'])) {
+      $efq = new EntityFieldQuery();
+      $efq->entityCondition('entity_type', $entity_type);
+      if ($bundle) {
+        $efq->entityCondition('bundle', $bundle);
+      }
+      $efq->fieldCondition($field, 'tid', array_keys($result['taxonomy_term']));
+      $result = $efq->execute();
+      if (isset($result[$entity_type])) {
+        return array_keys($result[$entity_type]);
+      }
+    }
+    return array();
+  }
+
+  /**
+   * Supportive method to query the referenced terms through provided field.
+   *
+   * Prepare an EntityFieldQuery to query the terms of the provided term
+   * reference field.
+   *
+   * @param array $field
+   *   Field API field definition array of the term reference field, based on
+   *   which the EntityFieldQuery object should be built
+   * @param array $instance
+   *   Field API instance definition array of the term reference field, based
+   *   on which the EntityFieldQuery object should be built
+   *
+   * @return EntityFieldQuery
+   */
+  protected static function targetTermEntityFieldQuery($field, $instance) {
+    $efq = new EntityFieldQuery();
+    $efq->entityCondition('entity_type', 'taxonomy_term');
+
+    if (isset($field['settings']['allowed_values']) && is_array($field['settings']['allowed_values'])) {
+      $bundles = array();
+      foreach ($field['settings']['allowed_values'] as $v) {
+        $bundles[] = $v['vocabulary'];
+      }
+      $efq->entityCondition('bundle', $bundles, 'IN');
+    }
+
+    return $efq;
   }
 }
