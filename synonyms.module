@@ -312,6 +312,16 @@ function synonyms_field_widget_info() {
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
       ),
     ),
+    'synonyms_select' => array(
+      'label' => t('Synonyms friendly select list'),
+      'field types' => array('taxonomy_term_reference'),
+      'settings' => array(
+        'sort' => 'weight',
+      ),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+      ),
+    ),
   );
 }
 
@@ -324,6 +334,8 @@ function synonyms_field_widget_settings_form($field, $instance) {
 
   $form = array();
 
+  switch  ($widget['type']) {
+    case 'synonyms_autocomplete':
   $form['auto_creation'] = array(
     '#type' => 'checkbox',
     '#title' => t('Allow auto-creation?'),
@@ -346,6 +358,21 @@ function synonyms_field_widget_settings_form($field, $instance) {
     '#description' => t('If you want to include only term name or a single synonym, suggesting a particular term, while disregarding all ongoing ones, please, tick this checkbox on.'),
     '#default_value' => $settings['suggest_only_unique'],
   );
+      break;
+
+    case 'synonyms_select':
+      $form['sort'] = array(
+        '#type' => 'radios',
+        '#title' => t('Sort'),
+        '#description' => t('Choose by what criterion the items within select should be sorted.'),
+        '#options' => array(
+          'weight' => t('As in taxonomy vocabulary (by weight)'),
+          'name' => t('By name of terms and their synonyms'),
+        ),
+        '#default_value' => $settings['sort'],
+      );
+      break;
+  }
 
   return $form;
 }
@@ -354,10 +381,14 @@ function synonyms_field_widget_settings_form($field, $instance) {
  * Implements hook_field_widget_form().
  */
 function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  $tags = array();
+  $default_value = array();
   foreach ($items as $item) {
-    $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
+    $default_value[] = $item['tid'];
   }
+
+  switch ($instance['widget']['type']) {
+    case 'synonyms_autocomplete':
+      $tags = taxonomy_term_load_multiple($default_value);
 
   $element += array(
     '#type' => 'textfield',
@@ -368,6 +399,43 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
     '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
     '#auto_creation' => $instance['widget']['settings']['auto_creation'],
   );
+      break;
+
+    case 'synonyms_select':
+      $multiple = $field['cardinality'] > 1 || $field['cardinality'] == FIELD_CARDINALITY_UNLIMITED;
+
+      $options = array();
+      foreach ($field['settings']['allowed_values'] as $tree) {
+        if ($vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
+          switch ($instance['widget']['settings']['sort']) {
+            case 'weight':
+              if ($terms = taxonomy_get_tree($vocabulary->vid, $tree['parent'], NULL, TRUE)) {
+                foreach ($terms as $term) {
+                  $options[] = synonyms_select_option($term);
+                  foreach (synonyms_get_raw($term) as $synonym) {
+                    $options[] = synonyms_select_option($term, $synonym);
+                  }
+                }
+              }
+              break;
+
+            case 'name':
+              // TODO: is there any way to leverage DB for the sorting routine?
+              $options = synonyms_select_sort_name_options_recursive($vocabulary->vid, $tree['parent']);
+              break;
+          }
+        }
+      }
+
+      $element += array(
+        '#type' => 'select',
+        '#multiple' => $multiple,
+        '#options' => $options,
+        '#default_value' => $default_value,
+        '#element_validate' => array('synonyms_select_form_to_storage'),
+      );
+      break;
+  }
 
   return $element;
 }
@@ -1012,6 +1080,38 @@ function synonyms_instance_id_load($instance_id) {
   return field_info_instance($result['entity_type'], $result['field_name'], $result['bundle']);
 }
 
+function synonyms_select_form_to_storage($element, &$form_state) {
+  $value = array();
+  if ($element['#multiple']) {
+    $value = $element['#value'];
+  }
+  else {
+    $value[] = $element['#value'];
+  }
+
+  foreach ($value as $k => $v) {
+    // For the cases when a synonym was selected and not a term option, we
+    // process the selected values stripping everything that goes after
+    // semicolon.
+    if (!is_numeric($v)) {
+      $tid = explode(':', $v);
+      $value[$k] = $tid[0];
+    }
+  }
+
+  // The user also might have selected multiple times the same term, given that
+  // a term can be represented by more than 1 option (a term and its synonym),
+  // then it's possible in theory, so we should be ready for this scenario.
+  $value = array_unique($value);
+
+  $form_state_value = array();
+  foreach ($value as $tid) {
+    $form_state_value[] = array('tid' => $tid);
+  }
+
+  form_set_value($element, $form_state_value, $form_state);
+}
+
 /**
  * Check whether a taxonomy term $tid is a child of a taxonomy term $parent_tid.
  *
@@ -1040,4 +1140,88 @@ function synonyms_taxonomy_term_is_child_of($tid, $parent_tid) {
   }
 
   return FALSE;
+}
+
+/**
+ * Format an option for select form element.
+ *
+ * @param object $term
+ *   Fully loaded taxonomy term which is represented by this option
+ * @param string $synonym
+ *   If the provided term is represented in this option by a synonym, then
+ *   provide it here
+ *
+ * @return object
+ *   An option for select form element
+ */
+function synonyms_select_option($term, $synonym = NULL) {
+  $key = $synonym ? $term->tid . ':' . drupal_html_class($synonym) : $term->tid;
+  $label = str_repeat('-', $term->depth) . ($synonym ? $synonym : $term->name);
+  return (object) array(
+    'option' => array($key => $label),
+  );
+}
+
+/**
+ * Supportive function to build options array with sorting by name logic.
+ *
+ * The function starts from the 0-depth level and starts to recursively build
+ * the options and to sort the labels on each level, then it merges the bottom
+ * to up all the levels maintaining correct order within the final options
+ * array.
+ *
+ * @param int $vid
+ *   Within which vocabulary to execute the function. Supply here the
+ *   {taxonomy_vocabulary}.vid value
+ * @param int $parent
+ *   Only children of this term will be included in the output. You can supply
+ *   0 which means to include all the terms from the vocabulary
+ * @param int $depth
+ *   Used for internal purposes. Clients of this function should supply here 0,
+ *   unless they know what they are doing. It is used internally to keep track
+ *   of the nesting level
+ *
+ * @return array
+ *   Array of options that can be inserted directly into 'select' form element.
+ *   The options will be sorted by name (term or synonym), respecting the
+ *   hierarchy restrictions
+ */
+function synonyms_select_sort_name_options_recursive($vid, $parent = 0, $depth = 0) {
+  $options = array();
+  if ($terms = taxonomy_get_tree($vid, $parent, 1, TRUE)) {
+    $options = array();
+    foreach ($terms as $term) {
+      $term->depth = $depth;
+      $options[] = synonyms_select_option($term);
+      foreach (synonyms_get_raw($term) as $synonym) {
+        $options[] = synonyms_select_option($term, $synonym);
+      }
+    }
+
+    usort($options, 'synonyms_select_sort_name');
+
+    // Now recursively go one level nested into each of the terms that we have
+    // on this level.
+    $options_copy = $options;
+    $i = 0;
+    foreach ($options_copy as $v) {
+      $i++;
+      $tid = array_keys($v->option);
+      $tid = $tid[0];
+      if (is_numeric($tid)) {
+        $nested_options = synonyms_select_sort_name_options_recursive($vid, $tid, $depth + 1);
+        $options = array_merge(array_slice($options, 0, $i), $nested_options, array_slice($options, $i));
+      }
+    }
+  }
+  return $options;
+}
+
+/**
+ * Supportive function.
+ *
+ * It is used for string comparison within synonyms friendly select widget.
+ */
+function synonyms_select_sort_name($a, $b) {
+  return strcasecmp(reset($a->option), reset($b->option));
 }
