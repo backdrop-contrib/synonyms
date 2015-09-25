@@ -56,12 +56,14 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
     exit;
   }
 
+  $widget = $instance['widget']['type'] == 'synonyms_autocomplete' ? $instance['widget']['settings'] : field_info_widget_settings('synonyms_autocomplete');
+
   // How many suggestions maximum we are able to output.
-  $max_suggestions = $instance['widget']['settings']['suggestion_size'];
+  $max_suggestions = $widget['suggestion_size'];
 
   // Whether we are allowed to suggest more than one entry per term, shall that
   // entry be either term name itself or one of its synonyms.
-  $suggest_only_unique = $instance['widget']['settings']['suggest_only_unique'];
+  $suggest_only_unique = $widget['suggest_only_unique'];
 
   // The user enters a comma-separated list of tags. We only autocomplete the
   // last tag.
