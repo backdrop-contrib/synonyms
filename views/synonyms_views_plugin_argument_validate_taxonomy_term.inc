@@ -31,14 +31,14 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
         // go through each of allowed vocabularies, collecting terms whose
         // synonyms might look like the argument we have. However, it is not
         // that easy to achieve due to the fact that synonyms may be kept in
-        // whatever format in whatever column and only corresponding Synonyms
-        // extractor class has the knowledge how it is organized. Firstly we are
-        // going to query database trying to find a term with our argument's
-        // name. If we find one, it is great and we stop right there. Otherwise,
-        // the nightmare starts: we are going to use
-        // AbstractSynonymsExtractor::processEntityFieldQuery() method to find
-        // synonyms that are similar to our argument. Then we will load those
-        // terms and manually in PHP will determine whether it is a match.
+        // whatever format in whatever column and only corresponding synonyms
+        // behavior implementation has the knowledge about how it is organized.
+        // Firstly we are going to query the database trying to find a term with
+        // our argument's name. If we find one, it is great and we stop right
+        // there. Otherwise, the nightmare starts: we are going to use
+        // processEntityFieldQuery() method to find synonyms that are similar to
+        // our argument. Then we will load those terms and manually in PHP will
+        // determine whether it is a match.
         $query = db_select('taxonomy_term_data', 't')
           ->fields('t', array('tid', 'name'));
         if (!empty($vocabularies)) {
@@ -89,24 +89,24 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
         // vocabulary for each synonyms-source field.
         foreach ($vocabularies as $vocabulary) {
           $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
-          foreach (synonyms_synonyms_fields($vocabulary) as $field) {
-            $field = field_info_field($field);
-            $instance = field_info_instance('taxonomy_term', $field['field_name'], $bundle);
+          $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
+          foreach ($behavior_implementations as $behavior_implementation) {
+            $field = field_info_field($behavior_implementation['field_name']);
+            $instance = field_info_instance($behavior_implementation['entity_type'], $field['field_name'], $bundle);
             $query = new EntityFieldQuery();
             $query->entityCondition('entity_type', 'taxonomy_term')
               ->entityCondition('bundle', $vocabulary->machine_name);
 
-            // We let the class that defines this field type as a source of
-            // synonyms filter out and provide its suggestions based on this
-            // field.
-            $class = synonyms_extractor_info($field['type']);
-            call_user_func(array($class, 'processEntityFieldQuery'), $match, $query, $field, $instance);
-            if (!empty($tids)) {
-              $query->entityCondition('entity_id', $tids, 'NOT IN');
-            }
-            $result = $query->execute();
-            if (isset($result['taxonomy_term'])) {
-              $tids = array_merge($tids, array_keys($result['taxonomy_term']));
+            $object = synonyms_behavior_implementation_class('synonyms', $field);
+            $object = new $object();
+            if ($object->processEntityFieldQuery($match, $query, $field, $instance)) {
+              if (!empty($tids)) {
+                $query->entityCondition('entity_id', $tids, 'NOT IN');
+              }
+              $result = $query->execute();
+              if (isset($result['taxonomy_term'])) {
+                $tids = array_merge($tids, array_keys($result['taxonomy_term']));
+              }
             }
           }
         }
@@ -116,8 +116,8 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
         // actually see if they match.
         $argument = mb_strtoupper($argument, 'UTF-8');
         foreach ($terms as $term) {
-          foreach (synonyms_get_term_synonyms($term) as $synonym) {
-            $synonym = mb_strtoupper($synonym['safe_value'], 'UTF-8');
+          foreach (synonyms_get_sanitized($term) as $synonym) {
+            $synonym = mb_strtoupper($synonym, 'UTF-8');
             if ($transform) {
               $synonym = str_replace(' ', '-', $synonym);
             }

@@ -2,24 +2,23 @@
 
 /**
  * @file
- * Define interface required for extracting synonyms from field types.
+ * Interfaces of synonyms behaviors that are shipped with Synonyms module.
  */
 
 /**
- * Definition of AbstractSynonymsExtractor.
+ * General interface of a synonyms behavior.
+ *
+ * All synonyms behaviors must extend this interface.
  */
-abstract class AbstractSynonymsExtractor {
+interface SynonymsBehavior {
+}
 
-  /**
-   * Return array of supported field types for synonyms extraction.
-   *
-   * @return array
-   *   Array of Field API field types from which this class is able to extract
-   *   synonyms
-   */
-  public static function fieldTypesSupported() {
-    return array();
-  }
+/**
+ * Interface of "synonyms" behavior.
+ *
+ * The most most basic synonyms behavior.
+ */
+interface SynonymsSynonymsBehavior extends SynonymsBehavior {
 
   /**
    * Extract synonyms from a field attached to an entity.
@@ -43,39 +42,17 @@ abstract class AbstractSynonymsExtractor {
    * @return array
    *   Array of synonyms extracted from $items
    */
-  public static function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
-    return array();
-  }
-
-  /**
-   * Allow you to hook in during autocomplete suggestions generation.
-   *
-   * Allow you to include entities for autocomplete suggestion that are possible
-   * candidates based on your field as a source of synonyms. This method is
-   * void, however, you have to alter and add your condition to $query
-   * parameter.
-   *
-   * @param string $tag
-   *   What user has typed in into autocomplete widget. Normally you would
-   *   run LIKE '%$tag%' on your column
-   * @param EntityFieldQuery $query
-   *   EntityFieldQuery object where you should put your conditions to
-   * @param array $field
-   *   Array of field definition according to Field API
-   * @param array $instance
-   *   Array of instance definition according to Field API
-   */
-  public static function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {}
+  public function extractSynonyms($items, $field, $instance, $entity, $entity_type);
 
   /**
    * Add an entity as a synonym into a field of another entity.
    *
    * Basically this method should be called when you want to add some entity
    * as a synonym to another entity (for example when you merge one entity
-   * into another and besides merging want to add synonym of the merging
-   * entity into the trunk entity). You should extract synonym value (according
-   * to what value is expected in this field) and return it. We try to provide
-   * you with as much of context as possible, but normally you would only need
+   * into another and besides merging want to add synonym of the merged entity
+   * into the trunk entity). You should extract synonym value (according to what
+   * value is expected in this field) and return it. We try to provide you with
+   * as much of context as possible, but normally you would only need
    * $synonym_entity and $synonym_entity_type parameters. Return an empty array
    * if entity of type $synonym_entity_type cannot be converted into a format
    * expected by $field.
@@ -98,9 +75,7 @@ abstract class AbstractSynonymsExtractor {
    *   Array of extra items to be merged into the items that already exist in
    *   field values
    */
-  public static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
-    return array();
-  }
+  public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
 
   /**
    * Search whether there is a provided synonym stored in a provided field.
@@ -128,22 +103,44 @@ abstract class AbstractSynonymsExtractor {
    *   An array of entity IDs that have $synonym as their synonym stored in the
    *   provided field
    */
-  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
-    return array();
-  }
+  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL);
 
+  // TODO: move this method back into AutocompleteSynonymsBehavior where it
+  // belongs.
   /**
-   * Supportive method.
+   * Allow you to include entities for autocomplete suggestion that are possible
+   * candidates based on your field as a source of synonyms. This method should
+   * alter $query by adding your condition to it. Additionally, you are expected
+   * to return either TRUE or FALSE, which either allow or disallow execution
+   * of the $query (you may want to disallow its execution if you know
+   * beforehand that it won't yield any result and thus saving execution of a
+   * useless SELECT).
    *
-   * Set such a condition on $query that it will always yield no results. Should
-   * be called from $this->processEntityFieldQuery() when for whatever reason
-   * the object can't alter $query to include matched synonyms. As a fallback it
-   * should call this method to make sure it filtered everything out.
-   *
+   * @param string $tag
+   *   What user has typed in into autocomplete widget. Normally you would
+   *   run LIKE '%$tag%' on your column
    * @param EntityFieldQuery $query
-   *   Query object passed to $this->processEntityFieldQuery() method
+   *   EntityFieldQuery object where you should put your conditions to
+   * @param array $field
+   *   Array of field definition according to Field API
+   * @param array $instance
+   *   Array of instance definition according to Field API
+   *
+   * @return bool
+   *   Whether to execute the $query. You may want to call its execution off, if
+   *   you know the query won't yield any result set anyway.
    */
-  protected static function emptyResultsCondition(EntityFieldQuery $query) {
-    $query->range(0, 0);
-  }
+  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance);
+}
+
+/**
+ * Interface of search integration synonyms behavior.
+ */
+interface SearchSynonymsBehavior extends SynonymsSynonymsBehavior {
+}
+
+/**
+ * Interface of the autocomplete synonyms behavior.
+ */
+interface AutocompleteSynonymsBehavior extends SynonymsSynonymsBehavior {
 }

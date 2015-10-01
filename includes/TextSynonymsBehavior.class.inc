@@ -5,13 +5,12 @@
  * Default Synonyms Extractor class that ships together with the Synonym module.
  */
 
-class SynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
+/**
+ * Definition of TextSynonymsBehavior class.
+ */
+class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SearchSynonymsBehavior {
 
-  public static function fieldTypesSupported() {
-    return array('text', 'number_integer', 'number_float', 'number_decimal');
-  }
-
-  public static function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
+  public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
 
     foreach ($items as $item) {
@@ -21,11 +20,11 @@ class SynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
     return $synonyms;
   }
 
-  public static function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
+  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     $query->fieldCondition($field, 'value', '%' . $tag . '%', 'LIKE');
   }
 
-  public static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+  public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
     $synonym = entity_label($synonym_entity_type, $synonym_entity);
     switch ($field['type']) {
       case 'text':
@@ -46,7 +45,7 @@ class SynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
     ));
   }
 
-  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', $entity_type);
     if ($bundle) {

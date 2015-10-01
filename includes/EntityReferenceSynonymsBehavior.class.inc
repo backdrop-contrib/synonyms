@@ -5,16 +5,14 @@
  * Enables Entity Reference field type to be source of synonyms.
  */
 
-class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
+/**
+ * Definition of EntityReferenceSynonymsBehavior class.
+ */
+class EntityReferenceSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SearchSynonymsBehavior {
 
-  public static function fieldTypesSupported() {
-    return array('entityreference');
-  }
-
-  public static function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
+  public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
 
-    // For speading up loading all the entities at once.
     $target_tids = array();
     foreach ($items as $item) {
       $target_tids[] = $item['target_id'];
@@ -27,33 +25,33 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
     return $synonyms;
   }
 
-  public static function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
+  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     // Unfortunately EntityFieldQuery does not currently support INNER JOINing
     // referenced entities via any field type.
     // Thus, we use an ugly solution -- going through all entities that exist
     // in such entity type trying to see if there is a match by entity's label.
-    $efq = self::targetEntityFieldQuery($field, $instance);
+    $efq = $this->targetEntityFieldQuery($field, $instance);
 
     $label_column = self::getLabelColumn($field, $instance);
     if (!$label_column) {
       // We can't get any matches if we do not know what column to query
       // against. So we add a condition to $query which will 100% yield empty
       // results.
-      self::emptyResultsCondition($query);
-      return;
+      return FALSE;
     }
     $efq->propertyCondition($label_column, '%' . $tag . '%', 'LIKE');
     $result = $efq->execute();
 
     if (!isset($result[$field['settings']['target_type']]) || !is_array($result[$field['settings']['target_type']])) {
-      self::emptyResultsCondition($query);
-      return;
+      return FALSE;
     }
     $result = $result[$field['settings']['target_type']];
     $query->fieldCondition($field, 'target_id', array_keys($result));
+
+    return TRUE;
   }
 
-  public static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+  public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
     // Firstly validating that this entity reference is able to reference to
     // that type of entity.
     $expected_synonym_entity_type = $field['settings']['target_type'];
@@ -66,9 +64,9 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
     ));
   }
 
-  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
-    $efq = self::targetEntityFieldQuery($field, $instance);
-    $label_column = self::getLabelColumn($field, $instance);
+  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+    $efq = $this->targetEntityFieldQuery($field, $instance);
+    $label_column = $this->getLabelColumn($field, $instance);
     if ($label_column) {
       $efq->propertyCondition($label_column, $synonym);
       $result = $efq->execute();
@@ -104,7 +102,7 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
    *
    * @return EntityFieldQuery
    */
-  protected static function targetEntityFieldQuery($field, $instance) {
+  protected function targetEntityFieldQuery($field, $instance) {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', $field['settings']['target_type']);
     return $efq;
@@ -127,7 +125,7 @@ class EntityReferenceSynonymsExtractor extends AbstractSynonymsExtractor {
    *   Label column of the referenced entity type. If it cannot be determined,
    *   FALSE is returned
    */
-  protected static function getLabelColumn($field, $instance) {
+  protected function getLabelColumn($field, $instance) {
     $entity_info = entity_get_info($field['settings']['target_type']);
     return isset($entity_info['entity keys']['label']) ? $entity_info['entity keys']['label'] : FALSE;
   }

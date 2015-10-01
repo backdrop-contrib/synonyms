@@ -2,19 +2,15 @@
 
 /**
  * @file
- * Enables Taxonomy Term Reference field types to be source of synonyms.
+ * Enables Taxonomy Term Reference field type to be source of synonyms.
  */
 
-/*
- * Definition of TaxonomySynonymsExtractor class.
+/**
+ * Definition of TaxonomySynonymsBehavior class.
  */
-class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
+class TaxonomySynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SearchSynonymsBehavior {
 
-  public static function fieldTypesSupported() {
-    return array('taxonomy_term_reference');
-  }
-
-  public static function synonymsExtract($items, $field, $instance, $entity, $entity_type) {
+  public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
 
     $terms = array();
@@ -28,14 +24,14 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     return $synonyms;
   }
 
-  public static function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
+  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     // Unfortunately EntityFieldQuery does not currently support INNER JOINing
     // term entity that is referenced via taxonomy_term_reference field type.
     // Thus, we use an ugly solution -- going through all terms that exist in
     // vocabulary and trying to see if there is a match by term's name.
     $tids = array();
 
-    $efq = self::targetTermEntityFieldQuery($field, $instance);
+    $efq = $this->targetTermEntityFieldQuery($field, $instance);
     $efq->propertyCondition('name', '%' . $tag . '%', 'LIKE');
     $result = $efq->execute();
     if (isset($result['taxonomy_term'])) {
@@ -45,15 +41,14 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     // Now we have tids of terms from the referenced vocabulary which names
     // LIKE %$tag%, suggested are the terms that refer to any of these $tids.
     if (empty($tids)) {
-      // No possible suggestions were found. We have to make sure $query yields
-      // no results.
-      self::emptyResultsCondition($query);
-      return;
+      return FALSE;
     }
     $query->fieldCondition($field, 'tid', $tids);
+
+    return TRUE;
   }
 
-  public static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+  public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
     // Taxonomy term reference supports only referencing of entity types
     // 'taxonomy_term'.. duh.
     if ($synonym_entity_type != 'taxonomy_term') {
@@ -89,8 +84,8 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
     ));
   }
 
-  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
-    $efq = self::targetTermEntityFieldQuery($field, $instance);
+  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+    $efq = $this->targetTermEntityFieldQuery($field, $instance);
     $efq->propertyCondition('name', $synonym);
     $result = $efq->execute();
     if (isset($result['taxonomy_term'])) {
@@ -123,7 +118,7 @@ class TaxonomySynonymsExtractor extends AbstractSynonymsExtractor {
    *
    * @return EntityFieldQuery
    */
-  protected static function targetTermEntityFieldQuery($field, $instance) {
+  protected function targetTermEntityFieldQuery($field, $instance) {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', 'taxonomy_term');
 
