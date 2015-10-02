@@ -79,14 +79,11 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
     $vocabularies = taxonomy_vocabulary_load_multiple(array_keys($vocabularies));
 
     // Array of found suggestions. Each subarray of this array will represent
-    // a single suggestion entry. The sub array must at least contain the
-    // following keys:
-    //   tid - tid of the suggested term
-    //   name - name of the suggested term
-    // And optionally, if the term is suggested based on its synonym, the sub
-    // array should also include the additional key:
-    //   synonym - string representation of the synonym based on which the
-    //     suggested term was included.
+    // a single suggestion entry. The sub array must contain the following keys:
+    // - tid: (int) tid of the suggested term
+    // - name: (string) name of the suggested term
+    // - wording: (string) human friendly XSS escaped text of the suggestion
+    //   entry
     $tags_return = array();
 
     // Firstly getting a list of tids that match by $term->name.
@@ -104,17 +101,11 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
       ->condition('t.vid', array_keys($vocabularies))
       ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
       ->range(0, $max_suggestions)
-      ->execute()
-      // TODO: redo it with fetchAllAssoc() and you should be able to remove the
-      // foreach below.
-      ->fetchAllKeyed();
-
-    // Converting results into another format.
-    foreach ($result as $tid => $name) {
-      $tags_return[] = array(
-        'name' => $name,
-        'tid' => $tid,
-      );
+      ->execute();
+    foreach ($result as $v) {
+      $v = (array) $v;
+      $v['wording'] = check_plain($v['name']);
+      $tags_return[] = $v;
     }
 
     $synonym_tids = array();
@@ -175,7 +166,12 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
         $implementation = $synonym_tids[$synonym_term->tid];
         foreach (synonyms_extract_synonyms($synonym_term, $implementation) as $synonym) {
           if (strpos(mb_strtoupper($synonym, 'UTF-8'), mb_strtoupper($tag_last, 'UTF-8')) !== FALSE) {
-            $tags_return[] = array('synonym' => $synonym) + $tmp;
+            $tags_return[] = $tmp + array(
+                'wording' => format_string(filter_xss($implementation['settings']['wording']), array(
+                  '@synonym' => $synonym,
+                  '@term' => $synonym_term->name,
+                )),
+              );
             if ($suggest_only_unique) {
               // We just want to output 1 single suggestion entry per term, so
               // one synonym is enough.
@@ -198,17 +194,10 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
       if (strpos($info['name'], ',') !== FALSE || strpos($info['name'], '"') !== FALSE) {
         $n = '"' . str_replace('"', '""', $info['name']) . '"';
       }
-
-      if (isset($info['synonym'])) {
-        $display_name = t('@synonym, synonym of %term', array('@synonym' => $info['synonym'], '%term' => $info['name']));
-      }
-      else {
-        $display_name = check_plain($info['name']);
-      }
       while (isset($term_matches[$prefix . $n])) {
         $n .= ' ';
       }
-      $term_matches[$prefix . $n] = $display_name;
+      $term_matches[$prefix . $n] = $info['wording'];
     }
   }
   drupal_json_output($term_matches);

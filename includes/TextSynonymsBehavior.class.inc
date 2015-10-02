@@ -45,6 +45,10 @@ class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSyno
     ));
   }
 
+  public function synonymItemHash($item, $field, $instance) {
+    return $item['value'];
+  }
+
   public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', $entity_type);

@@ -64,6 +64,10 @@ class EntityReferenceSynonymsBehavior implements SynonymsSynonymsBehavior, Autoc
     ));
   }
 
+  public function synonymItemHash($item, $field, $instance) {
+    return $field['settings']['target_type'] . $item['target_id'];
+  }
+
   public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
     $efq = $this->targetEntityFieldQuery($field, $instance);
     $label_column = $this->getLabelColumn($field, $instance);

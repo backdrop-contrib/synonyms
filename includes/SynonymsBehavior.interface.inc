@@ -78,6 +78,27 @@ interface SynonymsSynonymsBehavior extends SynonymsBehavior {
   public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
 
   /**
+   * Hash a field item that is enabled as synonym.
+   *
+   * Your hash function must return such hash that for 2 items that yield the
+   * same synonyms their hash must be the same. There is no limit on minimal or
+   * maximum hash length, but keep it reasonable, something below 512 symbols.
+   * Also, your hash function should strive to minimize hash collisions, i.e.
+   * when 2 different items yield the same hash.
+   *
+   * @param array $item
+   *   Field item whose hash is requested
+   * @param array $field
+   *   Field from which the $item comes from
+   * @param array $instance
+   *   Instance from which the $item comes from
+   *
+   * @return string
+   *   Hash of the provided $item
+   */
+  public function synonymItemHash($item, $field, $instance);
+
+  /**
    * Search whether there is a provided synonym stored in a provided field.
    *
    * Determine if there are any entities that have the provided $synonym as

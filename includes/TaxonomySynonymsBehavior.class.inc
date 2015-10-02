@@ -84,6 +84,10 @@ class TaxonomySynonymsBehavior implements SynonymsSynonymsBehavior, Autocomplete
     ));
   }
 
+  public function synonymItemHash($item, $field, $instance) {
+    return $item['tid'];
+  }
+
   public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
     $efq = $this->targetTermEntityFieldQuery($field, $instance);
     $efq->propertyCondition('name', $synonym);

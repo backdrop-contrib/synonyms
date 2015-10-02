@@ -100,6 +100,13 @@ class MyFieldTypeAutocompleteSynonymsBehavior implements AutocompleteSynonymsBeh
     return FALSE;
   }
 
+  public function synonymItemHash($item, $field, $instance) {
+    // Since we've agreed that the column that stores data in our imaginary
+    // field type is "foo". Then it suffices just to implement the hash function
+    // as the value of foo column.
+    return $item['foo'];
+  }
+
   /**
    * Search whether there is a provided synonym stored in a provided field.
    *
@@ -126,7 +133,7 @@ class MyFieldTypeAutocompleteSynonymsBehavior implements AutocompleteSynonymsBeh
    *   An array of entity IDs that have $synonym as their synonym stored in the
    *   provided field
    */
-  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', $entity_type);
     if ($bundle) {

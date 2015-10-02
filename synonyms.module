@@ -34,6 +34,7 @@ function synonyms_ctools_plugin_type() {
       'title' => NULL,
       'description' => NULL,
       'settings form callback' => NULL,
+      'interface' => NULL,
       'enabled callback' => NULL,
       'disabled callback' => NULL,
     ),
@@ -117,7 +118,7 @@ function synonyms_entity_property_info() {
  * Implements hook_node_update_index().
  */
 function synonyms_node_update_index($node) {
-  $output = '';
+  $output = array();
   foreach (field_info_instances('node', $node->type) as $instance) {
     // We go a field by field looking for taxonomy term reference and if that
     // vocabulary has enabled synonyms, we add term's synonyms to the search
@@ -125,29 +126,28 @@ function synonyms_node_update_index($node) {
     $field_info = field_info_field($instance['field_name']);
     if ($field_info['type'] == 'taxonomy_term_reference') {
       // For each term referenced in this node we have to add synonyms.
-      $_terms = field_get_items('node', $node, $instance['field_name']);
-      if (is_array($_terms) && !empty($_terms)) {
-        $terms = array();
-        foreach ($_terms as $v) {
-          $terms[] = $v['tid'];
-        }
-        // TODO: load all terms in a single run, i.e. take this function out of
-        // foreach loop.
-        $terms = taxonomy_term_load_multiple($terms);
-        foreach ($terms as $term) {
-          $bundle = field_extract_bundle('taxonomy_term', $term);
-          $behavior_implementations = synonyms_behavior_get('search', 'taxonomy_term', $bundle, TRUE);
-          foreach ($behavior_implementations as $implementation) {
-            $search_synonyms = synonyms_extract_synonyms($term, $implementation);
-            if (!empty($search_synonyms)) {
-              $output .= '<strong>' . implode(', ', $search_synonyms) . '</strong>';
-          }
+      $terms = field_get_items('node', $node, $instance['field_name']);
+      if (is_array($terms) && !empty($terms)) {
+        foreach ($terms as $v) {
+          $output[] = $v['tid'];
         }
       }
     }
   }
+
+  if (!empty($output)) {
+    $terms = taxonomy_term_load_multiple($output);
+    $output = array();
+    foreach ($terms as $term) {
+      $bundle = field_extract_bundle('taxonomy_term', $term);
+      $behavior_implementations = synonyms_behavior_get('search', 'taxonomy_term', $bundle, TRUE);
+      foreach ($behavior_implementations as $implementation) {
+        $output = array_merge($output, synonyms_extract_synonyms($term, $implementation));
+      }
+    }
   }
-  return $output;
+
+  return empty($output) ? '' : '<strong>' . implode($output, ', ') . '</strong>';
 }
 
 /**
@@ -707,6 +707,16 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
   // @todo: Currently we hardcode to LANGUAGE_NONE, but in future it would be
   // nice to have multilanguage support.
   $items = array_merge($items, $extra_items);
+
+  // Now we want to keep only unique values of the $items. Since we know nothing
+  // about what determines uniqueness of an item, we will ask the synonym
+  // behavior to hash each of them and then will compare hashes.
+  $unique_items = array();
+  foreach ($items as $item) {
+    $unique_items[$object->synonymItemHash($item, $field, $instance)] = $item;
+  }
+  $items = array_values($unique_items);
+
   $trunk_entity->{$field['field_name']}[LANGUAGE_NONE] = $items;
   // In future if this module eventually becomes a gateway for synonyms for any
   // entity types, we'll substitute it with entity_save().
@@ -851,6 +861,19 @@ function synonyms_behavior_implementation_info($behavior) {
   return $info;
 }
 
+/**
+ * Determine what PHP class implements specific behavior for specific field.
+ *
+ * @param string $behavior
+ *   Name of the behavior, implementation of which is requested. It should be
+ *   one of the keys of the return of synonyms_behaviors() function.
+ * @param array $field
+ *   Field definition array for which PHP class implementing $behavior is
+ *   requested
+ *
+ * @return string
+ *   Name of the PHP class that implements $behavior for $field field
+ */
 function synonyms_behavior_implementation_class($behavior, $field) {
   $map = synonyms_behavior_implementation_info($behavior);
   return $map[$field['type']];
@@ -887,7 +910,10 @@ function synonyms_behavior_settings_unpack($settings) {
  *   - settings: (mixed) the content of settings themselves
  */
 function synonyms_behavior_settings_save($settings) {
-  $settings['settings_serialized'] = serialize(isset($settings['settings']) ? $settings['settings'] : array());
+  if (!isset($settings['settings'])) {
+    $settings['settings'] = array();
+  }
+  $settings['settings_serialized'] = serialize($settings['settings']);
   $result = db_merge('synonyms_settings')
     ->key(array(
       'instance_id' => $settings['instance_id'],
@@ -899,16 +925,17 @@ function synonyms_behavior_settings_save($settings) {
       'settings_serialized' => $settings['settings_serialized'],
     ))
     ->execute();
+
   switch ($result) {
     case MergeQuery::STATUS_INSERT:
       $behavior_definition = synonyms_behaviors();
       $behavior_definition = $behavior_definition[$settings['behavior']];
       $enabled_callback = ctools_plugin_get_function($behavior_definition, 'enabled callback');
       if ($enabled_callback) {
-        $enabled_callback($behavior_definition, $settings, synonyms_instance_id_load($settings['instance_id']));
+        $enabled_callback($behavior_definition, $settings['settings'], synonyms_instance_id_load($settings['instance_id']));
+      }
+      break;
   }
-        break;
-    }
 }
 
 /**
