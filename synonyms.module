@@ -220,7 +220,7 @@ function synonyms_field_widget_info() {
       'field types' => array('taxonomy_term_reference'),
       'settings' => array(
         'size' => 60,
-        'autocomplete_path' => 'synonyms/autocomplete',
+        'synonyms_autocomplete_path' => 'synonyms/autocomplete',
         'suggestion_size' => 10,
         'suggest_only_unique' => FALSE,
         'auto_creation' => 1,
@@ -240,11 +240,6 @@ function synonyms_field_widget_settings_form($field, $instance) {
   $settings = $widget['settings'] + field_info_widget_settings($widget['type']);
 
   $form = array();
-
-  $form['autocomplete_path'] = array(
-    '#type' => 'value',
-    '#value' => $settings['autocomplete_path'],
-  );
 
   $form['auto_creation'] = array(
     '#type' => 'checkbox',
@@ -284,7 +279,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
   $element += array(
     '#type' => 'textfield',
     '#default_value' => taxonomy_implode_tags($tags),
-    '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
+    '#autocomplete_path' => $instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
     '#size' => $instance['widget']['settings']['size'],
     '#maxlength' => 1024,
     '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
