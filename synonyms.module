@@ -237,9 +237,14 @@ function synonyms_field_widget_info() {
  */
 function synonyms_field_widget_settings_form($field, $instance) {
   $widget = $instance['widget'];
-  $settings = $widget['settings'];
+  $settings = $widget['settings'] + field_info_widget_settings($widget['type']);
 
   $form = array();
+
+  $form['autocomplete_path'] = array(
+    '#type' => 'value',
+    '#value' => $settings['autocomplete_path'],
+  );
 
   $form['auto_creation'] = array(
     '#type' => 'checkbox',
