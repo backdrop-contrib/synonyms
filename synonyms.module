@@ -326,8 +326,6 @@ function synonyms_autocomplete_validate($element, &$form_state) {
 /**
  * Try to find a term by its name or synonym.
  *
- * To maximize the match trimming and case-insensitive comparison is used.
- *
  * @param string $name
  *   The string to be searched for its {taxonomy_term_data}.tid
  * @param object $vocabulary
@@ -342,19 +340,33 @@ function synonyms_autocomplete_validate($element, &$form_state) {
  *   found term, otherwise returns 0
  */
 function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
-  $name = mb_strtoupper(trim($name), 'UTF-8');
+  $name = trim($name);
 
-  $tree = taxonomy_get_tree($vocabulary->vid, $parent, NULL, TRUE);
-  foreach ($tree as $term) {
-    if (mb_strtoupper($term->name, 'UTF-8') == $name) {
+  $terms = taxonomy_get_term_by_name($name, $vocabulary->machine_name);
+  foreach ($terms as $term) {
+    if (!$parent || synonyms_taxonomy_term_is_child_of($term->tid, $parent)) {
+      // TODO: actually it could be so that there is more than 1 term that
+      // satisfies the search query, i.e. the name and parent constraints. At
+      // the moment we are going to return the first one we encounter, though
+      // something better could be thought of in the future.
       return $term->tid;
     }
+  }
 
-    // We additionally scan through the synonyms.
-    $synonyms = synonyms_get_sanitized($term);
-    foreach ($synonyms as $item) {
-      if (mb_strtoupper($item, 'UTF-8') == $name) {
-        return $term->tid;
+  // We have failed to find a term with the provided $name. So let's search now
+  // among the term synonyms.
+  foreach (synonyms_synonyms_fields($vocabulary) as $field_name) {
+    $field = field_info_field($field_name);
+    $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+    $instance = field_info_instance('taxonomy_term', $field['field_name'], $bundle);
+
+    $extractor = $extractor = synonyms_extractor_info($field['type']);
+    $tids = call_user_func(array($extractor, 'synonymFind'), $name, $field, $instance, 'taxonomy_term', $bundle);
+    foreach ($tids as $tid) {
+      if (!$parent || synonyms_taxonomy_term_is_child_of($tid, $parent)) {
+        // TODO: similarly here, as above, we could have more than 1 match, but
+        // for now we will simply return the first one encountered.
+        return $tid;
       }
     }
   }
@@ -558,6 +570,8 @@ function synonyms_synonyms_fields($vocabulary) {
   // It's not just as easy as pulling up already saved value. After this
   // we have to make sure that all the fields are still present and have not
   // been deleted from the vocabulary.
+  // TODO: implement hook_field_delete_instance() instead of doing these checks
+  // here.
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
   $instances = field_info_instances('taxonomy_term', $bundle);
   $settings['synonyms'] = array_intersect($settings['synonyms'], array_keys($instances));
@@ -712,4 +726,34 @@ function synonyms_views_api() {
     'api' => 3,
     'path' => drupal_get_path('module', 'synonyms') . '/views',
   );
+}
+
+/**
+ * Check whether a taxonomy term $tid is a child of a taxonomy term $parent_tid.
+ *
+ * Supportive function, used throughout this module for parent constrains.
+ *
+ * @param int $tid
+ *   {taxonomy_term}.tid of the term that is tested for being a child of the
+ *   $parent_tid term
+ * @param int $parent_tid
+ *   {taxonomy_term}.tid of the term that is tested for being parent of the $tid
+ *   term
+ *
+ * @return bool
+ *   Whether $tid is a child of $parent_tid
+ */
+function synonyms_taxonomy_term_is_child_of($tid, $parent_tid) {
+  $term_parents = taxonomy_get_parents_all($tid);
+
+  // Dropping out the term itself from its array of parents.
+  array_shift($term_parents);
+
+  foreach ($term_parents as $term_parent) {
+    if ($term_parent->tid == $parent_tid) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }

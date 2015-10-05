@@ -45,4 +45,15 @@ class SynonymsSynonymsExtractor extends AbstractSynonymsExtractor {
       'value' => $synonym,
     ));
   }
+
+  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+    $efq = new EntityFieldQuery();
+    $efq->entityCondition('entity_type', $entity_type);
+    if ($bundle) {
+      $efq->entityCondition('bundle', $bundle);
+    }
+    $efq->fieldCondition($field, 'value', $synonym);
+    $result = $efq->execute();
+    return isset($result[$entity_type]) ? array_keys($result[$entity_type]) : array();
+  }
 }

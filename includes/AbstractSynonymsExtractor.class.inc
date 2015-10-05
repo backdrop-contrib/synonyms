@@ -5,6 +5,9 @@
  * Define interface required for extracting synonyms from field types.
  */
 
+/**
+ * Definition of AbstractSynonymsExtractor.
+ */
 abstract class AbstractSynonymsExtractor {
 
   /**
@@ -96,6 +99,36 @@ abstract class AbstractSynonymsExtractor {
    *   field values
    */
   public static function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
+    return array();
+  }
+
+  /**
+   * Search whether there is a provided synonym stored in a provided field.
+   *
+   * Determine if there are any entities that have the provided $synonym as
+   * their synonym particularly stored within the provided field.
+   *
+   * @param string $synonym
+   *   What synonym should be sought for
+   * @param array $field
+   *   Field API field definition array of the field within which the search
+   *   for synonym should be performed
+   * @param array $instance
+   *   Field API instance definition array of the instance within which the
+   *   search for synonym should be performed
+   * @param string $entity_type
+   *   Among synonyms of what entity type to conduct the search. In other words,
+   *   only synonyms of this entity type will be considered when searching for
+   *   a match
+   * @param string $bundle
+   *   Optional argument to restrict the search not only by entity type but
+   *   also on the bundle level
+   *
+   * @return array
+   *   An array of entity IDs that have $synonym as their synonym stored in the
+   *   provided field
+   */
+  public static function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
     return array();
   }
 
