@@ -164,12 +164,14 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
         // Additionally we have to find out which synonym triggered inclusion of
         // this term.
         $implementation = $synonym_tids[$synonym_term->tid];
+        $instance = field_info_instance($implementation['entity_type'], $implementation['field_name'], $implementation['bundle']);
         foreach (synonyms_extract_synonyms($synonym_term, $implementation) as $synonym) {
           if (strpos(mb_strtoupper($synonym, 'UTF-8'), mb_strtoupper($tag_last, 'UTF-8')) !== FALSE) {
             $tags_return[] = $tmp + array(
                 'wording' => format_string(filter_xss($implementation['settings']['wording']), array(
                   '@synonym' => $synonym,
                   '@term' => $synonym_term->name,
+                  '@field_name' => drupal_strtolower($instance['label']),
                 )),
               );
             if ($suggest_only_unique) {
@@ -263,6 +265,8 @@ function synonyms_reindex_nodes_by_vocabulary($vocabulary) {
  * Default theme implementation for behavior settings form element.
  */
 function theme_synonyms_behaviors_settings($variables) {
+  drupal_add_css(drupal_get_path('module', 'synonyms') . '/synonyms.css');
+
   $element = &$variables['element'];
 
   $table = array(
@@ -284,7 +288,10 @@ function theme_synonyms_behaviors_settings($variables) {
       if (isset($element[$behavior][$instance_id]['#title']) && !$row_title) {
         $row_title = check_plain($element[$behavior][$instance_id]['#title']);
       }
-      $row[] = isset($element[$behavior][$instance_id]) ? drupal_render($element[$behavior][$instance_id]) : t('Not implemented');
+      $row[] = array(
+        'data' => isset($element[$behavior][$instance_id]) ? drupal_render($element[$behavior][$instance_id]) : t('Not implemented'),
+        'class' => array('synonyms-behavior-settings', 'synonyms-behavior-settings-' . $behavior),
+      );
     }
     array_unshift($row, $row_title);
     $table['rows'][] = $row;
