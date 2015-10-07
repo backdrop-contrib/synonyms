@@ -160,7 +160,7 @@ function synonyms_field_delete_instance($instance) {
     ->condition('s.instance_id', $instance['id'])
     ->execute();
   foreach ($result as $row) {
-    synonyms_behavior_settings_delete($instance['id'], $row['behavior']);
+    synonyms_behavior_settings_delete($instance['id'], $row->behavior);
   }
 }
 
@@ -178,7 +178,7 @@ function synonyms_synonyms_behavior_implementation_info($behavior) {
         'entityreference' => 'EntityReferenceSynonymsBehavior',
       );
       break;
-          }
+  }
   return array();
 }
 
@@ -187,6 +187,10 @@ function synonyms_synonyms_behavior_implementation_info($behavior) {
  */
 function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
   if (isset($form_state['confirm_delete']) && $form_state['confirm_delete']) {
+    return;
+  }
+
+  if (!isset($form['#vocabulary']->vid) || !$form['#vocabulary']->vid) {
     return;
   }
 
@@ -221,11 +225,11 @@ function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
       }
       else {
         $behavior_settings = !is_null($implementation['settings']);
-    }
+      }
       if ($behavior_settings) {
         if (isset($form_state['values']['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['settings'])) {
           $behavior_settings = $form_state['values']['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['settings'];
-  }
+        }
         elseif ($implementation['settings']) {
           $behavior_settings = $implementation['settings'];
         }
@@ -238,7 +242,7 @@ function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
         '#type' => 'checkbox',
         '#title' => t('Enable'),
         '#default_value' => $behavior_settings !== FALSE,
-  );
+      );
 
       $settings_form = ctools_plugin_get_function($behavior_info, 'settings form callback');
       if ($settings_form) {
@@ -440,13 +444,10 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
 
   // We have failed to find a term with the provided $name. So let's search now
   // among the term synonyms.
-  foreach (synonyms_synonyms_fields($vocabulary) as $field_name) {
-    $field = field_info_field($field_name);
-    $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
-    $instance = field_info_instance('taxonomy_term', $field['field_name'], $bundle);
-
-    $extractor = $extractor = synonyms_extractor_info($field['type']);
-    $tids = call_user_func(array($extractor, 'synonymFind'), $name, $field, $instance, 'taxonomy_term', $bundle);
+  $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+  $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
+  foreach ($behavior_implementations as $implementation) {
+    $tids = synonyms_synonym_find($name, $implementation);
     foreach ($tids as $tid) {
       if (!$parent || synonyms_taxonomy_term_is_child_of($tid, $parent)) {
         // TODO: similarly here, as above, we could have more than 1 match, but
@@ -644,6 +645,37 @@ function synonyms_extract_synonyms($entity, $behavior_implementation) {
     $synonyms = array_merge($synonyms, $object->extractSynonyms($items, $field, $instance, $entity, $behavior_implementation['entity_type']));
   }
   return $synonyms;
+}
+
+/**
+ * Find entities with a provided synonym within certain behavior implementation.
+ *
+ * Do not use this function, if you want to find entities that have $synonym
+ * as their synonyms, unless you know what you are doing. This function searches
+ * for the entities with synonyms from a field that is specified by
+ * $behavior_implementation parameter. The behavior may not necessarily be of
+ * 'synonyms' type, so it's not 100% valid to say that the returned entities
+ * have the specified synonym. However, this function is very useful for
+ * behaviors that "extend" the basic synonyms behavior.
+ *
+ * @param string $synonym
+ *   Name of the synonym that is searched for
+ * @param array $behavior_implementation
+ *   Fully loaded behavior implementation. Supply here one of the values from
+ *   the return of synonyms_behavior_get() function
+ *
+ * @return array
+ *   Array of entity IDs that contain $synonym as their synonym within the
+ *   provided behavior implementation
+ */
+function synonyms_synonym_find($synonym, $behavior_implementation) {
+  $field = field_info_field($behavior_implementation['field_name']);
+  $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
+
+  $object = synonyms_behavior_implementation_class($behavior_implementation['behavior'], $field);
+  $object = new $object();
+
+  return $object->synonymFind($synonym, $field, $instance);
 }
 
 /**

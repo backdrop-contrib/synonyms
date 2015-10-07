@@ -22,6 +22,7 @@ class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSyno
 
   public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
     $query->fieldCondition($field, 'value', '%' . $tag . '%', 'LIKE');
+    return TRUE;
   }
 
   public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
@@ -49,14 +50,12 @@ class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSyno
     return $item['value'];
   }
 
-  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+  public function synonymFind($synonym, $field, $instance) {
     $efq = new EntityFieldQuery();
-    $efq->entityCondition('entity_type', $entity_type);
-    if ($bundle) {
-      $efq->entityCondition('bundle', $bundle);
-    }
+    $efq->entityCondition('entity_type', $instance['entity_type']);
+    $efq->entityCondition('bundle', $instance['bundle']);
     $efq->fieldCondition($field, 'value', $synonym);
     $result = $efq->execute();
-    return isset($result[$entity_type]) ? array_keys($result[$entity_type]) : array();
+    return isset($result[$instance['entity_type']]) ? array_keys($result[$instance['entity_type']]) : array();
   }
 }

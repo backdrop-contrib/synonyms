@@ -112,19 +112,12 @@ interface SynonymsSynonymsBehavior extends SynonymsBehavior {
    * @param array $instance
    *   Field API instance definition array of the instance within which the
    *   search for synonym should be performed
-   * @param string $entity_type
-   *   Among synonyms of what entity type to conduct the search. In other words,
-   *   only synonyms of this entity type will be considered when searching for
-   *   a match
-   * @param string $bundle
-   *   Optional argument to restrict the search not only by entity type but
-   *   also on the bundle level
    *
    * @return array
    *   An array of entity IDs that have $synonym as their synonym stored in the
    *   provided field
    */
-  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL);
+  public function synonymFind($synonym, $field, $instance);
 
   // TODO: move this method back into AutocompleteSynonymsBehavior where it
   // belongs.

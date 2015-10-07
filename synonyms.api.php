@@ -121,26 +121,17 @@ class MyFieldTypeAutocompleteSynonymsBehavior implements AutocompleteSynonymsBeh
    * @param array $instance
    *   Field API instance definition array of the instance within which the
    *   search for synonym should be performed
-   * @param string $entity_type
-   *   Among synonyms of what entity type to conduct the search. In other words,
-   *   only synonyms of this entity type will be considered when searching for
-   *   a match
-   * @param string $bundle
-   *   Optional argument to restrict the search not only by entity type but
-   *   also on the bundle level
    *
    * @return array
    *   An array of entity IDs that have $synonym as their synonym stored in the
    *   provided field
    */
-  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+  public function synonymFind($synonym, $field, $instance) {
     $efq = new EntityFieldQuery();
-    $efq->entityCondition('entity_type', $entity_type);
-    if ($bundle) {
-      $efq->entityCondition('bundle', $bundle);
-    }
+    $efq->entityCondition('entity_type', $instance['entity_type']);
+    $efq->entityCondition('bundle', $instance['bundle']);
     $efq->fieldCondition($field, 'value', $synonym);
     $result = $efq->execute();
-    return isset($result[$entity_type]) ? array_keys($result[$entity_type]) : array();
+    return isset($result[$instance['entity_type']]) ? array_keys($result[$instance['entity_type']]) : array();
   }
 }

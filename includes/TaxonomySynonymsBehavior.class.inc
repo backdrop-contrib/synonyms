@@ -88,20 +88,18 @@ class TaxonomySynonymsBehavior implements SynonymsSynonymsBehavior, Autocomplete
     return $item['tid'];
   }
 
-  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+  public function synonymFind($synonym, $field, $instance) {
     $efq = $this->targetTermEntityFieldQuery($field, $instance);
     $efq->propertyCondition('name', $synonym);
     $result = $efq->execute();
     if (isset($result['taxonomy_term'])) {
       $efq = new EntityFieldQuery();
-      $efq->entityCondition('entity_type', $entity_type);
-      if ($bundle) {
-        $efq->entityCondition('bundle', $bundle);
-      }
+      $efq->entityCondition('entity_type', $instance['entity_type']);
+      $efq->entityCondition('bundle', $instance['bundle']);
       $efq->fieldCondition($field, 'tid', array_keys($result['taxonomy_term']));
       $result = $efq->execute();
-      if (isset($result[$entity_type])) {
-        return array_keys($result[$entity_type]);
+      if (isset($result[$instance['entity_type']])) {
+        return array_keys($result[$instance['entity_type']]);
       }
     }
     return array();

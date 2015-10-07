@@ -68,7 +68,7 @@ class EntityReferenceSynonymsBehavior implements SynonymsSynonymsBehavior, Autoc
     return $field['settings']['target_type'] . $item['target_id'];
   }
 
-  public function synonymFind($synonym, $field, $instance, $entity_type, $bundle = NULL) {
+  public function synonymFind($synonym, $field, $instance) {
     $efq = $this->targetEntityFieldQuery($field, $instance);
     $label_column = $this->getLabelColumn($field, $instance);
     if ($label_column) {
@@ -77,14 +77,12 @@ class EntityReferenceSynonymsBehavior implements SynonymsSynonymsBehavior, Autoc
       if (isset($result[$field['settings']['target_type']])) {
         $entity_ids = array_keys($result[$field['settings']['target_type']]);
         $efq = new EntityFieldQuery();
-        $efq->entityCondition('entity_type', $entity_type);
-        if ($bundle) {
-          $efq->entityCondition('bundle', $bundle);
-        }
+        $efq->entityCondition('entity_type', $instance['entity_type']);
+        $efq->entityCondition('bundle', $instance['bundle']);
         $efq->fieldCondition($field, 'target_id', $entity_ids);
         $result = $efq->execute();
-        if (isset($result[$entity_type])) {
-          return array_keys($result[$entity_type]);
+        if (isset($result[$instance['entity_type']])) {
+          return array_keys($result[$instance['entity_type']]);
         }
       }
     }
