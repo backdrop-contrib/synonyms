@@ -59,7 +59,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
       else {
         $widget = field_info_widget_settings('synonyms_autocomplete');
       }
-      $autocomplete_path = $widget['autocomplete_path'];
+      $autocomplete_path = $widget['synonyms_autocomplete_path'];
       $size = $widget['size'];
 
       $form['value']['#autocomplete_path'] = $autocomplete_path . '/' . $this->definition['field_name'] . '/' . $field_entity_type . '/' . $bundle;
