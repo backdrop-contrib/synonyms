@@ -336,28 +336,28 @@ function synonyms_field_widget_settings_form($field, $instance) {
 
   switch  ($widget['type']) {
     case 'synonyms_autocomplete':
-  $form['auto_creation'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Allow auto-creation?'),
-    '#description' => t('Whether users may create a new term by typing in a non-existing name into this field.'),
-    '#default_value' => $settings['auto_creation'],
-  );
+      $form['auto_creation'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Allow auto-creation?'),
+        '#description' => t('Whether users may create a new term by typing in a non-existing name into this field.'),
+        '#default_value' => $settings['auto_creation'],
+      );
 
-  $form['suggestion_size'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Suggestions Size'),
-    '#description' => t('Please, enter how many suggested entities to show in the autocomplete textfield.'),
-    '#required' => TRUE,
-    '#element_validate' => array('element_validate_integer_positive'),
-    '#default_value' => $settings['suggestion_size'],
-  );
+      $form['suggestion_size'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Suggestions Size'),
+        '#description' => t('Please, enter how many suggested entities to show in the autocomplete textfield.'),
+        '#required' => TRUE,
+        '#element_validate' => array('element_validate_integer_positive'),
+        '#default_value' => $settings['suggestion_size'],
+      );
 
-  $form['suggest_only_unique'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Suggest only one entry per term'),
-    '#description' => t('If you want to include only term name or a single synonym, suggesting a particular term, while disregarding all ongoing ones, please, tick this checkbox on.'),
-    '#default_value' => $settings['suggest_only_unique'],
-  );
+      $form['suggest_only_unique'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Suggest only one entry per term'),
+        '#description' => t('If you want to include only term name or a single synonym, suggesting a particular term, while disregarding all ongoing ones, please, tick this checkbox on.'),
+        '#default_value' => $settings['suggest_only_unique'],
+      );
       break;
 
     case 'synonyms_select':
@@ -390,15 +390,15 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
     case 'synonyms_autocomplete':
       $tags = taxonomy_term_load_multiple($default_value);
 
-  $element += array(
-    '#type' => 'textfield',
-    '#default_value' => taxonomy_implode_tags($tags),
-    '#autocomplete_path' => $instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
-    '#size' => $instance['widget']['settings']['size'],
-    '#maxlength' => 1024,
-    '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
-    '#auto_creation' => $instance['widget']['settings']['auto_creation'],
-  );
+      $element += array(
+        '#type' => 'textfield',
+        '#default_value' => taxonomy_implode_tags($tags),
+        '#autocomplete_path' => $instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
+        '#size' => $instance['widget']['settings']['size'],
+        '#maxlength' => 1024,
+        '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
+        '#auto_creation' => $instance['widget']['settings']['auto_creation'],
+      );
       break;
 
     case 'synonyms_select':
@@ -425,6 +425,10 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
               break;
           }
         }
+      }
+
+      if (!$multiple && !$element['#required']) {
+        $options = array('' => t('- None -')) + $options;
       }
 
       $element += array(
@@ -664,7 +668,7 @@ function synonyms_get_raw($item) {
 function synonyms_get_term_synonyms($term) {
   $synonyms = array();
   $vocabulary = taxonomy_vocabulary_load($term->vid);
-    $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+  $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
 
   $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
   foreach ($behavior_implementations as $implementation) {
@@ -902,7 +906,7 @@ function synonyms_behavior_get($behavior, $entity_type = NULL, $bundle = NULL, $
 
   if (empty($supported_field_types)) {
     return array();
-    }
+  }
 
   $query = db_select('field_config_instance', 'i');
   $field_alias = $query->innerJoin('field_config', 'f', 'f.id = i.field_id');
@@ -1080,6 +1084,13 @@ function synonyms_instance_id_load($instance_id) {
   return field_info_instance($result['entity_type'], $result['field_name'], $result['bundle']);
 }
 
+/**
+ * Convert synonyms friendly select widget values for storage friendly format.
+ *
+ * It acts similar to what the _options_form_to_storage() function does -
+ * bridges between how values are returned from form API to how they are
+ * expected by Field module.
+ */
 function synonyms_select_form_to_storage($element, &$form_state) {
   $value = array();
   if ($element['#multiple']) {

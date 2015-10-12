@@ -706,6 +706,522 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
 }
 
 /**
+ * Test "Synonyms friendly select" widget of Synonyms module.
+ */
+class SelectSynonymsWebTestCase extends SynonymsWebTestCase {
+
+  protected $behavior = 'synonyms';
+
+  /**
+   * Array of fully loaded taxonomy term entities to be used in this test.
+   *
+   * @var array
+   */
+  protected $terms = array();
+
+  /**
+   * Entity type to which a term reference field with tested widget is attached.
+   *
+   * @var string
+   */
+  protected $entity_type = 'node';
+
+  /**
+   * Bundle to which a term reference field with tested widget is attached.
+   *
+   * @var string
+   */
+  protected $bundle = 'synonyms_test_content';
+
+  /**
+   * Field definition array of the field that will be attached to
+   * $this->entity_type with synonyms-friendly select widget.
+   *
+   * @var array
+   */
+  protected $term_reference_field = array();
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Synonyms friendly select',
+      'description' => 'Ensure that the "synonym friendly select" widget works correctly with taxonomy terms.',
+      'group' => 'Synonyms',
+    );
+  }
+
+  public function setUp($modules = array()) {
+    parent::setUp($modules);
+
+    // Creating a test content type.
+    $this->drupalPost('admin/structure/types/add', array(
+      'name' => 'Synonyms Test Content',
+      'type' => $this->bundle,
+    ), 'Save content type');
+
+    $this->term_reference_field = array(
+      'type' => 'taxonomy_term_reference',
+      'field_name' => 'synonyms_term',
+      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+      'settings' => array(
+        'allowed_values' => array(
+          array(
+            'vocabulary' => $this->vocabulary->machine_name,
+            'parent' => 0,
+          ),
+        ),
+      ),
+    );
+    $this->term_reference_field = field_create_field($this->term_reference_field);
+
+    $instance = array(
+      'field_name' => $this->term_reference_field['field_name'],
+      'entity_type' => 'node',
+      'bundle' => $this->bundle,
+      'label' => 'Synonym Terms Select',
+      'widget' => array(
+        'type' => 'synonyms_select',
+      ),
+    );
+    $instance = field_create_instance($instance);
+
+    $this->terms['parent_term'] = (object) array(
+      'vid' => $this->vocabulary->vid,
+      'name' => 'Parent Term',
+      $this->fields['enabled']['field']['field_name'] => array(
+        LANGUAGE_NONE => array(
+          array('value' => 'Parent TermA' . $this->randomName()),
+          array('value' => 'Parent TermZ' . $this->randomName()),
+        ),
+      ),
+    );
+    taxonomy_term_save($this->terms['parent_term']);
+
+    $this->terms['child_term'] = (object) array(
+      'vid' => $this->vocabulary->vid,
+      'name' => 'Child Term',
+      'parent' => $this->terms['parent_term']->tid,
+      $this->fields['enabled']['field']['field_name'] => array(
+        LANGUAGE_NONE => array(
+          array('value' => 'Child TermZ' . $this->randomName()),
+          array('value' => 'Child TermA' . $this->randomName()),
+        ),
+      ),
+    );
+    taxonomy_term_save($this->terms['child_term']);
+
+    $this->terms['normal_term'] = (object) array(
+      'vid' => $this->vocabulary->vid,
+      'name' => 'Normal Term',
+      $this->fields['enabled']['field']['field_name'] => array(
+        LANGUAGE_NONE => array(
+          array('value' => 'Normal TermA' . $this->randomName()),
+          array('value' => 'Normal TermZ' . $this->randomName()),
+        ),
+      ),
+    );
+    taxonomy_term_save($this->terms['normal_term']);
+  }
+
+  /**
+   * Test sorting options of the widget.
+   */
+  public function testWidgetSorting() {
+    $cardinality = array(
+      1 => 1,
+      FIELD_CARDINALITY_UNLIMITED => 'unlimited',
+    );
+    $required = array(
+      TRUE => 'required',
+      FALSE => 'not required',
+    );
+
+    foreach ($cardinality as $cardinality_k => $cardinality_v) {
+      foreach ($required as $required_k => $required_v) {
+        debug($this->terms);
+        $this->term_reference_field['cardinality'] = $cardinality_k;
+        field_update_field($this->term_reference_field);
+
+        $instance = field_info_instance($this->entity_type, $this->term_reference_field['field_name'], $this->bundle);
+        $instance['required'] = $required_k;
+        $instance['widget']['settings']['sort'] = 'weight';
+        field_update_instance($instance);
+
+        $this->terms['parent_term']->weight = 0;
+        taxonomy_term_save($this->terms['parent_term']);
+
+        $options = array();
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+          'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+          'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+          'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+          'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+          'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+          'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $this->drupalGet('node/add/synonyms-test-content');
+        $this->assertSynonymsSelect($options, 'Synonyms select sorting by weight works for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
+
+        $this->terms['parent_term']->weight = -1000;
+        taxonomy_term_save($this->terms['parent_term']);
+        $options = array();
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+          'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+          'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+          'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+          'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+          'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+          'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $this->drupalGet('node/add/synonyms-test-content');
+        $this->assertSynonymsSelect($options, 'Synonyms select sorting by weight works after changing weights of terms for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
+
+        $instance = field_info_instance($this->entity_type, $this->term_reference_field['field_name'], $this->bundle);
+        $instance['widget']['settings']['sort'] = 'name';
+        field_update_instance($instance);
+
+        $options = array();
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+          'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['normal_term'],
+          'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+          'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['child_term'],
+          'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+          'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        );
+        $options[] = array(
+          'term' => $this->terms['parent_term'],
+          'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+        );
+        $this->drupalGet('node/add/synonyms-test-content');
+        $this->assertSynonymsSelect($options, 'Synonyms select sorting by name works for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
+      }
+    }
+  }
+
+  /**
+   * Test main functionality of the widget.
+   */
+  public function testWidget() {
+    $name = $this->randomName();
+    $this->drupalPost('node/add/synonyms-test-content', array(
+      'title' => $name,
+      $this->term_reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
+        $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+        $this->terms['child_term']->tid,
+        $this->terms['normal_term']->tid,
+        $this->synonymSelectKey($this->terms['normal_term'], $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+      ),
+    ), 'Save');
+
+    $node = $this->drupalGetNodeByTitle($name);
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertText($this->terms['parent_term']->name, 'Term is saved when its synonym is submitted through synonyms friendly select for the unlimited cardinality.');
+    $this->assertText($this->terms['child_term']->name, 'Term is saved when it is submitted through synonyms friendly select for the unlimited cardinality.');
+    $this->assertUniqueText($this->terms['normal_term']->name, 'Term is saved only once when the term and its synonym are submitted through synonyms friendly select for the unlimited cardinality.');
+
+    $options = array();
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'selected' => TRUE,
+    );
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'selected' => TRUE,
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'selected' => TRUE,
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $this->drupalGet('node/' . $node->nid . '/edit');
+    $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with field cardinality more than 1.');
+
+    $this->term_reference_field['cardinality'] = 2;
+    field_update_field($this->term_reference_field);
+    $name = $this->randomName();
+    $this->drupalPost('node/add/synonyms-test-content', array(
+      'title' => $name,
+      $this->term_reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
+        $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+        $this->terms['child_term']->tid,
+        $this->terms['normal_term']->tid,
+      ),
+    ), 'Save');
+    $this->assertText('this field cannot hold more than 2 values.', 'Submitting 3 entries into a field with cardinality of 2, that refer to 3 terms, results in a form error.');
+
+    $this->drupalPost('node/add/synonyms-test-content', array(
+      'title' => $name,
+      $this->term_reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
+        $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+        $this->terms['normal_term']->tid,
+        $this->synonymSelectKey($this->terms['normal_term'], $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+      ),
+    ), 'Save');
+    $node = $this->drupalGetNodeByTitle($name);
+    $this->drupalGet('node/' .  $node->nid);
+    $this->assertUniqueText($this->terms['parent_term']->name, 'Submitting 3 entries into a field with cardinality of 2, that refer to only 2 terms, results in form getting submitted. Term #1 is saved.');
+    $this->assertUniqueText($this->terms['normal_term']->name, 'Term #2 is saved.');
+
+    $this->term_reference_field['cardinality'] = 1;
+    field_update_field($this->term_reference_field);
+    $name = $this->randomName();
+    $this->drupalPost('node/add/synonyms-test-content', array(
+      'title' => $name,
+      $this->term_reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+    ), 'Save');
+    $node = $this->drupalGetNodeByTitle($name);
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertText($this->terms['parent_term']->name, 'Term is saved when its synonym is submitted through synonyms friendly select for the cardinality of 1.');
+
+    $options = array();
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+    );
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'selected' => TRUE,
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
+
+    $this->drupalPost('node/' . $node->nid . '/edit', array(
+      $this->term_reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->terms['child_term']->tid,
+    ), 'Save');
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertNoText($this->terms['parent_term']->name, 'After updating entity the old term is removed.');
+    $this->assertText($this->terms['child_term']->name, 'Term is saved when it is submitted through synonyms friendly select for the cardinality of 1.');
+
+    $options = array();
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+    );
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['normal_term'],
+      'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['parent_term'],
+      'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'selected' => TRUE,
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+    );
+    $options[] = array(
+      'term' => $this->terms['child_term'],
+      'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
+    );
+    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
+  }
+
+  /**
+   * Assert correctness of the synonyms-friendly select widget.
+   *
+   * @param array $options
+   *   Array of what options must be present in the select form element. It
+   *   should consist of arrays that follow such structure:
+   *   - term: (object) Term object this option represents
+   *   - synonym: (string) If the option comes from a term, then include it here
+   *   - selected: (bool) Place here TRUE if this option should be selected by
+   *     default
+   * @param string $message
+   *   Assert message that will be passed on to SimpleTest internals
+   */
+  protected function assertSynonymsSelect($options, $message = '') {
+    $instance = field_info_instance($this->entity_type, $this->term_reference_field['field_name'], $this->bundle);
+    $multiple = $this->term_reference_field['cardinality'] > 1 || $this->term_reference_field['cardinality'] == FIELD_CARDINALITY_UNLIMITED;
+    $required = $instance['required'];
+
+    $element = array(
+      '#options' => array(),
+      '#value' => $multiple ? array() : 'nothing',
+    );
+
+    if (!$multiple && !$required) {
+      $element['#options'][''] = t('- None -');
+    }
+
+    foreach ($options as $v) {
+      $key = $this->synonymSelectKey($v['term'], isset($v['synonym']) ? $v['synonym'] : NULL);
+      $label = $v['term']->name;
+      if (isset($v['synonym'])) {
+        $label = $v['synonym'];
+      }
+
+      if (isset($v['selected']) && $v['selected']) {
+        if ($multiple) {
+          $element['#value'][] = $key;
+        }
+        else {
+          $element['#value'] = $key;
+        }
+      }
+
+      $depth = count(taxonomy_get_parents_all($v['term']->tid)) - 1;
+      $element['#options'][$key] = str_repeat('-', $depth) . $label;
+    }
+    $this->assertRaw('>' . form_select_options($element) . '</select>', $message, 'Synonyms friendly select');
+  }
+
+  /**
+   * Form a key for the option of a synonyms friendly select.
+   *
+   * @param object $term
+   *   Fully loaded taxonomy term for which to generate the key
+   * @param string $synonym
+   *   If the option, whose key is being generated, comes from a synonym, then
+   *   supply it here
+   *
+   * @return string
+   *   Key for the option of a synonym friendly select
+   */
+  protected function synonymSelectKey($term, $synonym = NULL) {
+    $key = $term->tid;
+    if ($synonym) {
+      $key .= ':' . drupal_html_class($synonym);
+    }
+    return $key;
+  }
+}
+
+/**
  * Test Synonyms module integration with Drupal search functionality.
  */
 class SearchIndexSynonymsWebTestCase extends SynonymsWebTestCase {
