@@ -8,7 +8,7 @@
 /**
  * Definition of TextSynonymsBehavior class.
  */
-class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SearchSynonymsBehavior {
+class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SelectSynonymsBehavior, SearchSynonymsBehavior {
 
   public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();

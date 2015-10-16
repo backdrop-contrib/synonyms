@@ -170,6 +170,7 @@ function synonyms_field_delete_instance($instance) {
 function synonyms_synonyms_behavior_implementation_info($behavior) {
   switch ($behavior) {
     case 'autocomplete':
+    case 'select':
     case 'synonyms':
     case 'search':
       return array(
@@ -410,10 +411,13 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
           switch ($instance['widget']['settings']['sort']) {
             case 'weight':
               if ($terms = taxonomy_get_tree($vocabulary->vid, $tree['parent'], NULL, TRUE)) {
+                $behavior_implementations = synonyms_behavior_get('select', 'taxonomy_term', field_extract_bundle('taxonomy_term', $vocabulary), TRUE);
                 foreach ($terms as $term) {
                   $options[] = synonyms_select_option($term);
-                  foreach (synonyms_get_raw($term) as $synonym) {
-                    $options[] = synonyms_select_option($term, $synonym);
+                  foreach ($behavior_implementations as $implementation) {
+                    foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
+                      $options[] = synonyms_select_option($term, $synonym, $implementation);
+                    }
                   }
                 }
               }
@@ -421,7 +425,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
 
             case 'name':
               // TODO: is there any way to leverage DB for the sorting routine?
-              $options = synonyms_select_sort_name_options_recursive($vocabulary->vid, $tree['parent']);
+              $options = synonyms_select_sort_name_options_recursive($vocabulary, $tree['parent']);
               break;
           }
         }
@@ -1161,15 +1165,25 @@ function synonyms_taxonomy_term_is_child_of($tid, $parent_tid) {
  * @param string $synonym
  *   If the provided term is represented in this option by a synonym, then
  *   provide it here
+ * @param array $behavior_implementation
+ *   Behavior implementation array from which the $synonym comes from
  *
  * @return object
  *   An option for select form element
  */
-function synonyms_select_option($term, $synonym = NULL) {
+function synonyms_select_option($term, $synonym = NULL, $behavior_implementation = NULL) {
   $key = $synonym ? $term->tid . ':' . drupal_html_class($synonym) : $term->tid;
-  $label = str_repeat('-', $term->depth) . ($synonym ? $synonym : $term->name);
+  $wording = $term->name;
+  if ($synonym) {
+    $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
+    $wording = format_string($behavior_implementation['settings']['wording'], array(
+      '@synonym' => $synonym,
+      '@term' => $term->name,
+      '@field_name' => drupal_strtolower($instance['label']),
+    ));
+  }
   return (object) array(
-    'option' => array($key => $label),
+    'option' => array($key => str_repeat('-', $term->depth) . $wording),
   );
 }
 
@@ -1181,9 +1195,9 @@ function synonyms_select_option($term, $synonym = NULL) {
  * to up all the levels maintaining correct order within the final options
  * array.
  *
- * @param int $vid
- *   Within which vocabulary to execute the function. Supply here the
- *   {taxonomy_vocabulary}.vid value
+ * @param object $vocabulary
+ *   Within which vocabulary to execute the function. Supply here the fully
+ *   loaded taxonomy vocabulary object
  * @param int $parent
  *   Only children of this term will be included in the output. You can supply
  *   0 which means to include all the terms from the vocabulary
@@ -1197,15 +1211,26 @@ function synonyms_select_option($term, $synonym = NULL) {
  *   The options will be sorted by name (term or synonym), respecting the
  *   hierarchy restrictions
  */
-function synonyms_select_sort_name_options_recursive($vid, $parent = 0, $depth = 0) {
+function synonyms_select_sort_name_options_recursive($vocabulary, $parent = 0, $depth = 0) {
+  // We statically cache behavior implementations in order to not DDOS the data
+  // base.
+  $behavior_implementations = drupal_static(__FUNCTION__, array());
+
+  $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+  if (!isset($behavior_implementations[$bundle])) {
+    $behavior_implementations[$bundle] = synonyms_behavior_get('select', 'taxonomy_term', $bundle, TRUE);
+  }
+
   $options = array();
-  if ($terms = taxonomy_get_tree($vid, $parent, 1, TRUE)) {
+  if ($terms = taxonomy_get_tree($vocabulary->vid, $parent, 1, TRUE)) {
     $options = array();
     foreach ($terms as $term) {
       $term->depth = $depth;
       $options[] = synonyms_select_option($term);
-      foreach (synonyms_get_raw($term) as $synonym) {
-        $options[] = synonyms_select_option($term, $synonym);
+      foreach ($behavior_implementations[$bundle] as $implementation) {
+        foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
+          $options[] = synonyms_select_option($term, $synonym, $implementation);
+        }
       }
     }
 
@@ -1220,7 +1245,7 @@ function synonyms_select_sort_name_options_recursive($vid, $parent = 0, $depth =
       $tid = array_keys($v->option);
       $tid = $tid[0];
       if (is_numeric($tid)) {
-        $nested_options = synonyms_select_sort_name_options_recursive($vid, $tid, $depth + 1);
+        $nested_options = synonyms_select_sort_name_options_recursive($vocabulary, $tid, $depth + 1);
         $options = array_merge(array_slice($options, 0, $i), $nested_options, array_slice($options, $i));
       }
     }

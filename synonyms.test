@@ -710,7 +710,11 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
  */
 class SelectSynonymsWebTestCase extends SynonymsWebTestCase {
 
-  protected $behavior = 'synonyms';
+  protected $behavior = 'select';
+
+  protected $behavior_settings = array(
+    'wording' => '@synonym @term @field_name',
+  );
 
   /**
    * Array of fully loaded taxonomy term entities to be used in this test.
@@ -1182,7 +1186,11 @@ class SelectSynonymsWebTestCase extends SynonymsWebTestCase {
       $key = $this->synonymSelectKey($v['term'], isset($v['synonym']) ? $v['synonym'] : NULL);
       $label = $v['term']->name;
       if (isset($v['synonym'])) {
-        $label = $v['synonym'];
+        $label = format_string($this->behavior_settings['wording'], array(
+          '@synonym' => $v['synonym'],
+          '@term'=> $v['term']->name,
+          '@field_name' => $this->fields['enabled']['instance']['label'],
+        ));
       }
 
       if (isset($v['selected']) && $v['selected']) {

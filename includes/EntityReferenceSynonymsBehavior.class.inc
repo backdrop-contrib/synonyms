@@ -8,7 +8,7 @@
 /**
  * Definition of EntityReferenceSynonymsBehavior class.
  */
-class EntityReferenceSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SearchSynonymsBehavior {
+class EntityReferenceSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SelectSynonymsBehavior, SearchSynonymsBehavior {
 
   public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
