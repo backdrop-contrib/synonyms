@@ -2,13 +2,13 @@
 
 /**
  * @file
- * Default Synonyms Extractor class that ships together with the Synonym module.
+ * Enables text and number field types to be source of synonyms.
  */
 
 /**
  * Definition of TextSynonymsBehavior class.
  */
-class TextSynonymsBehavior extends AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SelectSynonymsBehavior, SearchSynonymsBehavior {
+class TextSynonymsBehavior extends AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SelectSynonymsBehavior {
 
   public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();

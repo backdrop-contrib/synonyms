@@ -70,33 +70,6 @@ function synonyms_theme() {
 }
 
 /**
- * Implements hook_taxonomy_term_update().
- */
-function synonyms_taxonomy_term_update($term) {
-  // Integration with Search module: if we notice at least some change in
-  // synonyms of this term, we want to trigger search re-indexing of nodes,
-  // where this term is referenced, since change in term synonyms affects nodes
-  // ranking in the search.
-  if (isset($term->original)) {
-    $bundle = field_extract_bundle('taxonomy_term', $term);
-    $behavior_implementations = synonyms_behavior_get('search', 'taxonomy_term', $bundle, TRUE);
-
-    $current_search_synonyms = array();
-    $previous_search_synonyms = array();
-
-    foreach  ($behavior_implementations as $behavior_implementation) {
-      $current_search_synonyms = array_merge($current_search_synonyms, synonyms_extract_synonyms($term, $behavior_implementation));
-      $previous_search_synonyms = array_merge($previous_search_synonyms, synonyms_extract_synonyms($term->original, $behavior_implementation));
-    }
-    $diff = array_diff($current_search_synonyms, $previous_search_synonyms);
-    if (!empty($diff) || count($current_search_synonyms) != count($previous_search_synonyms)) {
-      module_load_include('inc', 'synonyms', 'synonyms.pages');
-      synonyms_reindex_nodes_by_terms(array($term->tid));
-    }
-  }
-}
-
-/**
  * Implements hook_entity_property_info().
  */
 function synonyms_entity_property_info() {
@@ -112,42 +85,6 @@ function synonyms_entity_property_info() {
     'raw getter callback' => 'synonyms_get_raw',
   );
   return $info;
-}
-
-/**
- * Implements hook_node_update_index().
- */
-function synonyms_node_update_index($node) {
-  $output = array();
-  foreach (field_info_instances('node', $node->type) as $instance) {
-    // We go a field by field looking for taxonomy term reference and if that
-    // vocabulary has enabled synonyms, we add term's synonyms to the search
-    // index.
-    $field_info = field_info_field($instance['field_name']);
-    if ($field_info['type'] == 'taxonomy_term_reference') {
-      // For each term referenced in this node we have to add synonyms.
-      $terms = field_get_items('node', $node, $instance['field_name']);
-      if (is_array($terms) && !empty($terms)) {
-        foreach ($terms as $v) {
-          $output[] = $v['tid'];
-        }
-      }
-    }
-  }
-
-  if (!empty($output)) {
-    $terms = taxonomy_term_load_multiple($output);
-    $output = array();
-    foreach ($terms as $term) {
-      $bundle = field_extract_bundle('taxonomy_term', $term);
-      $behavior_implementations = synonyms_behavior_get('search', 'taxonomy_term', $bundle, TRUE);
-      foreach ($behavior_implementations as $implementation) {
-        $output = array_merge($output, synonyms_extract_synonyms($term, $implementation));
-      }
-    }
-  }
-
-  return empty($output) ? '' : '<strong>' . implode($output, ', ') . '</strong>';
 }
 
 /**
@@ -172,7 +109,6 @@ function synonyms_synonyms_behavior_implementation_info($behavior) {
     case 'autocomplete':
     case 'select':
     case 'synonyms':
-    case 'search':
       return array(
         'number_integer' => 'TextSynonymsBehavior',
         'number_decimal' => 'TextSynonymsBehavior',

@@ -176,12 +176,6 @@ abstract class AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehav
 }
 
 /**
- * Interface of search integration synonyms behavior.
- */
-interface SearchSynonymsBehavior extends SynonymsSynonymsBehavior {
-}
-
-/**
  * Interface of the autocomplete synonyms behavior.
  */
 interface AutocompleteSynonymsBehavior extends SynonymsSynonymsBehavior {

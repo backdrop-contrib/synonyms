@@ -6,8 +6,11 @@ the module provides this additional functionality:
 * support of synonyms through Field API. Any field, for which synonyms behavior
    exists, can be enabled as source of synonyms.
 * synonym-friendly autocomplete widget for taxonomy_term_reference fields
-* integration with Drupal search functionality enabling searching content by
-   synonyms of the terms that the content references
+* integration with Drupal search functionality through Synonyms Search
+   submodule. It enables searching content by synonyms of the terms that the
+   content references. Synonyms Search submodule also integrates with Taxonomy
+   Search contributed module in fashion that allows your terms to be found by
+   their synonyms.
 * integration with Search API. If you include synonyms of a term into your
    Search API search index, your clients will be able to find content with
    search keywords that contain synonyms and not actual names of terms.

@@ -1,0 +1,13 @@
+name = Synonyms Search
+description = "Provides synonyms integration with searching."
+package = Taxonomy
+core = 7.x
+dependencies[] = synonyms
+dependencies[] = search
+
+files[] = synonyms_search.test
+
+files[] = includes/SearchSynonymsBehavior.interface.inc
+files[] = includes/SearchTextSynonymsBehavior.class.inc
+files[] = includes/SearchTaxonomySynonymsBehavior.class.inc
+files[] = includes/SearchEntityReferenceSynonymsBehavior.class.inc
