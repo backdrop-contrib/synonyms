@@ -174,6 +174,9 @@ function synonyms_synonyms_behavior_implementation_info($behavior) {
     case 'synonyms':
     case 'search':
       return array(
+        'number_integer' => 'TextSynonymsBehavior',
+        'number_decimal' => 'TextSynonymsBehavior',
+        'number_float' => 'TextSynonymsBehavior',
         'text' => 'TextSynonymsBehavior',
         'taxonomy_term_reference' => 'TaxonomySynonymsBehavior',
         'entityreference' => 'EntityReferenceSynonymsBehavior',
