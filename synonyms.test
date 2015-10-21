@@ -598,6 +598,20 @@ class AutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
       $this->terms['name_another_synonym']->name => $this->terms['name_another_synonym']->name,
       $this->terms['synonym_another_name']->name => $this->synonymAutocompleteResult($this->terms['synonym_another_name'], $this->terms['synonym_another_name']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
     ), 'Submitting a name similar to name of one term and synonym of another into autocomplete path yields both terms included.');
+
+    // Enabling another field in the autocomplete suggestions to make sure 2 and
+    // more fields can participate in the action.
+    synonyms_behavior_settings_save(array(
+      'instance_id' => $this->fields['disabled']['instance']['id'],
+      'behavior' => $this->behavior,
+      'settings' => $this->behavior_settings,
+    ));
+    $this->terms['one_synonym']->{$this->fields['disabled']['field']['field_name']} = $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']};
+    taxonomy_term_save($this->terms['one_synonym']);
+    $this->assertAutocompleteMenuPath($this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], array(
+      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
+      $this->terms['one_synonym']->name . ' ' => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['disabled']['instance']),
+    ), 'Autocomplete works correctly when more than 1 field participates in the autocomplete behavior.');
   }
 
   /**
