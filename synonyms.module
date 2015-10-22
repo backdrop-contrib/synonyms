@@ -326,7 +326,6 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
     $default_value[] = $item['tid'];
   }
 
-<<<<<<< HEAD
   switch ($instance['widget']['type']) {
     case 'synonyms_autocomplete':
       $tags = taxonomy_term_load_multiple($default_value);
@@ -339,6 +338,11 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
         '#maxlength' => 1024,
         '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
         '#auto_creation' => $instance['widget']['settings']['auto_creation'],
+        '#attached' => array(
+          'js' => array(
+            drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
+          ),
+        ),
       );
       break;
 
@@ -384,22 +388,6 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
       );
       break;
   }
-=======
-  $element += array(
-    '#type' => 'textfield',
-    '#default_value' => taxonomy_implode_tags($tags),
-    '#autocomplete_path' => $instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
-    '#size' => $instance['widget']['settings']['size'],
-    '#maxlength' => 1024,
-    '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
-    '#auto_creation' => $instance['widget']['settings']['auto_creation'],
-    '#attached' => array(
-      'js' => array(
-        drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
-      ),
-    ),
-  );
->>>>>>> Issue #2587557 by bucefal91, devad: fixing right padded spacesthrough custom JavaScript in the autocomplete widget.
 
   return $element;
 }
