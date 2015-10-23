@@ -8,7 +8,7 @@ the module provides this additional functionality:
 * synonym-friendly autocomplete widget for taxonomy_term_reference fields
 * integration with Drupal search functionality through Synonyms Search
    submodule. It enables searching content by synonyms of the terms that the
-   content references. Synonyms Search submodule also integrates with Taxonomy
+   content references. Synonyms Search submodule also integrates with Term
    Search contributed module in fashion that allows your terms to be found by
    their synonyms.
 * integration with Search API. If you include synonyms of a term into your
