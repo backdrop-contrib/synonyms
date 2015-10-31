@@ -185,5 +185,4 @@ interface AutocompleteSynonymsBehavior extends SynonymsSynonymsBehavior {
  * Interface of the synonyms friendly select behavior.
  */
 interface SelectSynonymsBehavior extends SynonymsSynonymsBehavior {
-
 }
