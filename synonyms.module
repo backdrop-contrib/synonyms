@@ -469,16 +469,22 @@ function synonyms_autocomplete_validate($element, &$form_state) {
   // (a) Double-check that those terms are not synonyms.
   // (b) Check that synonyms' configurable auto-creation option is enabled.
   $value = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
+
+  $field = field_widget_field($element, $form_state);
   foreach ($value as $delta => $term) {
     if ($term['tid'] == 'autocreate') {
-      $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $term['vocabulary_machine_name'], TRUE);
       $synonym_tid = 0;
-      foreach ($behavior_implementations as $behavior_implementation) {
-        $synonym_tid = synonyms_find_term_by_synonym($term['name'], $behavior_implementation);
-        if ($synonym_tid) {
-          break;
+      foreach ($field['settings']['allowed_values'] as $tree) {
+        $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $tree['vocabulary'], TRUE);
+        foreach ($behavior_implementations as $behavior_implementation) {
+          $synonyms = synonyms_synonyms_find_behavior(db_and()->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $term['name']), $behavior_implementation);
+          foreach ($synonyms as $synonym) {
+            $synonym_tid = $synonym->entity_id;
+            break(2);
+          }
         }
       }
+
       if ($synonym_tid != 0) {
         $value[$delta]['tid'] = $synonym_tid;
       }
@@ -524,55 +530,17 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
   // We have failed to find a term with the provided $name. So let's search now
   // among the term synonyms.
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
-  $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
-  foreach ($behavior_implementations as $implementation) {
-    $tids = synonyms_synonym_find($name, $implementation);
-    foreach ($tids as $tid) {
-      if (!$parent || synonyms_taxonomy_term_is_child_of($tid, $parent)) {
-        // TODO: similarly here, as above, we could have more than 1 match, but
-        // for now we will simply return the first one encountered.
-        return $tid;
-      }
+  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $name), 'taxonomy_term', $bundle);
+  foreach ($synonyms as $synonym) {
+    if (!$parent || synonyms_taxonomy_term_is_child_of($synonym->entity_id, $parent)) {
+      // TODO: similarly here, as above, we could have more than 1 match, but
+      // for now we will simply return the first one encountered.
+      return $synonym->entity_id;
     }
   }
 
   // If we have reached down here, this means we haven't got any match
   // as fallback we return 0.
-  return 0;
-}
-
-/**
- * Search for synonym of a term within a certain field and behavior.
- *
- * Do not use this function, if you want to find a term by its synonyms, unless
- * you know what you are doing. This function searches among the synonyms
- * of a field that is specified by $behavior_implementation parameter. The
- * behavior may not necessarily be of 'synonyms' type, so it's not 100% valid
- * to say that the term has $synonym as its synonym. However, this function is
- * very useful for behaviors that "extend" the basic synonyms behavior.
- *
- * @param string $synonym
- *   Name of the synonym for which the search is requested
- * @param array $behavior_implementation
- *   Fully loaded behavior implementation. Supply here one of the values from
- *   the return of synonyms_behavior_get() function
- * @param int $parent
- *   Optionally you may narrow down the search within children of a term
- *
- * @return int
- */
-function synonyms_find_term_by_synonym($synonym, $behavior_implementation, $parent = 0) {
-  $synonym = drupal_strtoupper($synonym);
-
-  $vocabulary = taxonomy_vocabulary_machine_name_load($behavior_implementation['bundle']);
-  $tree = taxonomy_get_tree($vocabulary->vid, $parent, NULL, TRUE);
-  foreach ($tree as $term) {
-    foreach (synonyms_extract_synonyms($term, $behavior_implementation) as $v) {
-      if (drupal_strtoupper($v) == $synonym) {
-        return $term->tid;
-      }
-    }
-  }
   return 0;
 }
 
@@ -693,13 +661,12 @@ function synonyms_get_term_synonyms($term) {
 /**
  * Extract synonyms of an entity within a certain field and behavior.
  *
- * Do not use this function, if you want to find get synonyms of an entity,
- * unless you know what you are doing. This function extracts the synonyms from
- * a field that is specified by $behavior_implementation parameter. The
- * behavior may not necessarily be of 'synonyms' type, so it's not 100% valid
- * to say that the entity has the returned array as its synonyms. However, this
- * function is very useful for behaviors that "extend" the basic synonyms
- * behavior.
+ * Do not use this function, if you want to get synonyms of an entity, unless
+ * you know what you are doing. This function extracts the synonyms from a field
+ * that is specified by $behavior_implementation parameter. The behavior may not
+ * necessarily be of 'synonyms' type, so it's not 100% valid to say that the
+ * entity has the returned array as its synonyms. However, this function is very
+ * useful for behaviors that "extend" the basic synonyms behavior.
  *
  * @param object $entity
  *   Fully loaded entity, synonyms from which should be extracted
@@ -727,34 +694,92 @@ function synonyms_extract_synonyms($entity, $behavior_implementation) {
 }
 
 /**
+ * Look up entities by their synonyms.
+ *
+ * @param QueryConditionInterface $condition
+ *   Object of QueryConditionInterface that specifies conditions by which you
+ *   want to find synonyms. When building this condition object, use
+ *   AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for
+ *   real column name that contains synonym as text. For example, if you were to
+ *   find all entities with synonyms that begin with "synonym-come-here"
+ *   substring, case insensitive and replacing all spaces in original synonym
+ *   string by a dash sign, then you would have to create the following
+ *   condition object:
+ *   db_and()
+ *     ->where("LOWER(REPLACE(" . AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
+ *   And then just supply this object as an input parameter to this function
+ * @param string $entity_type
+ *   Among synonyms of what entity type to search
+ * @param string $bundle
+ *   Among synonyms of what bundle to search
+ *
+ * @return array
+ *   Array of found synonyms and entity IDs to which those belong. Each element
+ *   in the array will be an object and will have the following structure:
+ *   - synonym: (string) Synonym that was found and which satisfies the
+ *     $condition you specified
+ *   - entity_id: (int) ID of the entity to which the found synonym belongs
+ */
+function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type, $bundle) {
+  $rows = array();
+
+  $behavior_implementations = synonyms_behavior_get('synonyms', $entity_type, $bundle, TRUE);
+  foreach ($behavior_implementations as $behavior_implementation) {
+    foreach (synonyms_synonyms_find_behavior($condition, $behavior_implementation) as $row) {
+      $rows[] = $row;
+    }
+  }
+
+  return $rows;
+}
+
+/**
  * Find entities with a provided synonym within certain behavior implementation.
  *
- * Do not use this function, if you want to find entities that have $synonym
- * as their synonyms, unless you know what you are doing. This function searches
- * for the entities with synonyms from a field that is specified by
+ * Do not use this function, if you want to find entities that have specific
+ * synonyms, unless you know what you are doing. This function searches for the
+ * entities with synonyms from a field that is specified by
  * $behavior_implementation parameter. The behavior may not necessarily be of
  * 'synonyms' type, so it's not 100% valid to say that the returned entities
- * have the specified synonym. However, this function is very useful for
+ * have the specified synonyms. However, this function is very useful for
  * behaviors that "extend" the basic synonyms behavior.
  *
- * @param string $synonym
- *   Name of the synonym that is searched for
+ * You have full SQL flexibility to specify parameters of how to search for
+ * synonyms. You can create arbitrary set of SQL conditions that will be plugged
+ * into specific SELECT queries by behavior implementations.
+ *
+ * @param QueryConditionInterface $condition
+ *   Object of QueryConditionInterface that specifies conditions by which you
+ *   want to find synonyms. When building this condition object, use
+ *   AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for
+ *   real column name that contains synonym as text. For example, if you were to
+ *   find all entities with synonyms that begin with "synonym-come-here"
+ *   substring, case insensitive and replacing all spaces in original synonym
+ *   string by a dash sign, then you would have to create the following
+ *   condition object:
+ *   db_and()
+ *     ->where("LOWER(REPLACE(" . AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
+ *   And then just supply this object as an input parameter to this function
  * @param array $behavior_implementation
  *   Fully loaded behavior implementation. Supply here one of the values from
  *   the return of synonyms_behavior_get() function
  *
- * @return array
- *   Array of entity IDs that contain $synonym as their synonym within the
- *   provided behavior implementation
+ * @return Traversable
+ *   Traversable result set of found synonyms and entity IDs to which those
+ *   belong. Each element in the result set will be an object and will have the
+ *   following structure:
+ *   - synonym: (string) Synonym that was found and which satisfies the
+ *     $condition you specified
+ *   - entity_id: (int) ID of the entity to which the found synonym belongs
  */
-function synonyms_synonym_find($synonym, $behavior_implementation) {
+function synonyms_synonyms_find_behavior(QueryConditionInterface $condition, $behavior_implementation) {
   $field = field_info_field($behavior_implementation['field_name']);
   $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
 
   $object = synonyms_behavior_implementation_class($behavior_implementation['behavior'], $field);
   $object = new $object();
 
-  return $object->synonymFind($synonym, $field, $instance);
+  return $object->synonymsFind($condition, $field, $instance);
 }
 
 /**
@@ -790,7 +815,7 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
 
   $bundle = entity_extract_ids($trunk_entity_type, $trunk_entity);
   $bundle = $bundle[2];
-  $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
+  $behavior_implementations = synonyms_behavior_get('synonyms', $trunk_entity_type, $bundle, TRUE);
 
   $field = field_info_field($field);
   $instance = field_info_instance($trunk_entity_type, $field['field_name'], $bundle);
@@ -809,7 +834,7 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
 
   if (empty($extra_items)) {
     // For some reason the behavior implementation couldn't merge it. Otherwise
-    // it would have returned an empty array.
+    // it would have not returned an empty array.
     return FALSE;
   }
 
@@ -896,8 +921,8 @@ function synonyms_views_api() {
  *   - behavior: (string) Behavior name of this behavior implementation, i.e.
  *     name of a ctools plugin of "behavior" type
  *   - settings: (mixed) Behavior settings, its internal structure depends on
- *     the type of behavior it is. If this value is NULL, it means the behavior
- *     implementation is currently disabled in the field instance
+ *     the type of behavior. If this value is NULL, it means the behavior
+ *     implementation is currently disabled for the field instance
  *   - entity_type: (string) Entity type to which this behavior implementation
  *     applies
  *   - bundle: (string) Bundle name to which this behavior implementation
@@ -963,7 +988,7 @@ function synonyms_behaviors() {
  * @return array
  *   Array of information about what field types implement the provided behavior
  *   through what PHP classes. Keys of this array are field types, whereas their
- *   values are names of PHP classes that implemented the provided behavior for
+ *   values are names of PHP classes that implement the provided behavior for
  *   that particular field type
  */
 function synonyms_behavior_implementation_info($behavior) {

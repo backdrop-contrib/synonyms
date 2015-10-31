@@ -70,7 +70,7 @@ function hook_synonyms_behavior_implementation_info_alter(&$info, $behavior) {
 /**
  * Example of how to implement a synonyms behavior for an arbitrary field type.
  */
-class MyFieldTypeAutocompleteSynonymsBehavior implements AutocompleteSynonymsBehavior {
+class MyFieldTypeAutocompleteSynonymsBehavior extends AbstractSynonymsSynonymsBehavior implements AutocompleteSynonymsBehavior {
 
   public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     // Let's say our synonyms is stored in the 'foo' column of the field.
@@ -90,16 +90,6 @@ class MyFieldTypeAutocompleteSynonymsBehavior implements AutocompleteSynonymsBeh
     ));
   }
 
-  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
-    // So we want to find such items in our field that begin with "$tag" string.
-    $query->fieldCondition($field, 'foo', $tag . '%');
-
-    // If we for some reason know beforehand that there will be no match in our
-    // field, in order to not run the useless query, we can return FALSE here
-    // and the query will not be executed.
-    return FALSE;
-  }
-
   public function synonymItemHash($item, $field, $instance) {
     // Since we've agreed that the column that stores data in our imaginary
     // field type is "foo". Then it suffices just to implement the hash function
@@ -107,31 +97,33 @@ class MyFieldTypeAutocompleteSynonymsBehavior implements AutocompleteSynonymsBeh
     return $item['foo'];
   }
 
-  /**
-   * Search whether there is a provided synonym stored in a provided field.
-   *
-   * Determine if there are any entities that have the provided $synonym as
-   * their synonym particularly stored within the provided field.
-   *
-   * @param string $synonym
-   *   What synonym should be sought for
-   * @param array $field
-   *   Field API field definition array of the field within which the search
-   *   for synonym should be performed
-   * @param array $instance
-   *   Field API instance definition array of the instance within which the
-   *   search for synonym should be performed
-   *
-   * @return array
-   *   An array of entity IDs that have $synonym as their synonym stored in the
-   *   provided field
-   */
-  public function synonymFind($synonym, $field, $instance) {
-    $efq = new EntityFieldQuery();
-    $efq->entityCondition('entity_type', $instance['entity_type']);
-    $efq->entityCondition('bundle', $instance['bundle']);
-    $efq->fieldCondition($field, 'value', $synonym);
-    $result = $efq->execute();
-    return isset($result[$instance['entity_type']]) ? array_keys($result[$instance['entity_type']]) : array();
+  public function synonymsFind(QueryConditionInterface $condition, $field, $instance) {
+    // We only can find synonyms in SQL storage. If this field is not one, then
+    // we have full right to throw an exception.
+    if ($field['storage']['type'] != 'field_sql_storage') {
+      throw new SynonymsSynonymsBehaviorException(t('Not supported storage engine %type in synonymsFind() method.', array(
+        '%type' => $field['storage']['type'],
+      )));
+    }
+    // Now we will figure out in what table $field is stored. We want to
+    // condition the 'foo' column within that field table.
+    $table = array_keys($field['storage']['details']['sql'][FIELD_LOAD_CURRENT]);
+    $table = reset($table);
+    $column = $field['storage']['details']['sql'][FIELD_LOAD_CURRENT][$table]['foo'];
+
+    // Once we know full path to the column that stores synonyms as plain text,
+    // we can use a supplementary method from AbstractSynonymsSynonymsBehavior,
+    // which helps us to convert a column placeholder into its real value within
+    // the condition we have received from outside.
+    $this->synonymsFindProcessCondition($condition, $column);
+
+    // Now we are all set to build a SELECT query and return its result set.
+    $query = db_select($table);
+    $query->fields($table, array('entity_id'));
+    $query->addField($table, $column, 'synonym');
+    return $query->condition($condition)
+      ->condition('entity_type', $instance['entity_type'])
+      ->condition('bundle', $instance['bundle'])
+      ->execute();
   }
 }

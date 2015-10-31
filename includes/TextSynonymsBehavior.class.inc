@@ -8,7 +8,7 @@
 /**
  * Definition of TextSynonymsBehavior class.
  */
-class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SelectSynonymsBehavior, SearchSynonymsBehavior {
+class TextSynonymsBehavior extends AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSynonymsBehavior, SelectSynonymsBehavior, SearchSynonymsBehavior {
 
   public function extractSynonyms($items, $field, $instance, $entity, $entity_type) {
     $synonyms = array();
@@ -18,11 +18,6 @@ class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSyno
     }
 
     return $synonyms;
-  }
-
-  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance) {
-    $query->fieldCondition($field, 'value', '%' . $tag . '%', 'LIKE');
-    return TRUE;
   }
 
   public function mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type) {
@@ -50,12 +45,24 @@ class TextSynonymsBehavior implements SynonymsSynonymsBehavior, AutocompleteSyno
     return $item['value'];
   }
 
-  public function synonymFind($synonym, $field, $instance) {
-    $efq = new EntityFieldQuery();
-    $efq->entityCondition('entity_type', $instance['entity_type']);
-    $efq->entityCondition('bundle', $instance['bundle']);
-    $efq->fieldCondition($field, 'value', $synonym);
-    $result = $efq->execute();
-    return isset($result[$instance['entity_type']]) ? array_keys($result[$instance['entity_type']]) : array();
+  public function synonymsFind(QueryConditionInterface $condition, $field, $instance) {
+    if ($field['storage']['type'] != 'field_sql_storage') {
+      throw new SynonymsSynonymsBehaviorException(t('Not supported storage engine %type in synonymsFind() method.', array(
+        '%type' => $field['storage']['type'],
+      )));
+    }
+    $table = array_keys($field['storage']['details']['sql'][FIELD_LOAD_CURRENT]);
+    $table = reset($table);
+    $column = $field['storage']['details']['sql'][FIELD_LOAD_CURRENT][$table]['value'];
+
+    $this->synonymsFindProcessCondition($condition, $column);
+
+    $query = db_select($table);
+    $query->fields($table, array('entity_id'));
+    $query->addField($table, $column, 'synonym');
+    return $query->condition($condition)
+      ->condition('entity_type', $instance['entity_type'])
+      ->condition('bundle', $instance['bundle'])
+      ->execute();
   }
 }

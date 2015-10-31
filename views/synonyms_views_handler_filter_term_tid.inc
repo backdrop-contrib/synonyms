@@ -147,12 +147,19 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
       $tids[] = $term->tid;
     }
 
-    $missing_clone = $missing;
-    foreach ($missing_clone as $tag => $v) {
-      $tid = synonyms_get_term_by_synonym($tag, $vocabulary);
-      if ($tid) {
-        $tids[] = $tid;
-        unset($missing[$tag]);
+    $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $vocabulary->machine_name, TRUE);
+    foreach ($behavior_implementations as $behavior_implementation) {
+      if (!empty($missing)) {
+        $condition = db_or();
+        foreach ($missing as $tag => $v) {
+          $condition->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $tag);
+        }
+        $synonyms = synonyms_synonyms_find_behavior($condition, $behavior_implementation);
+        foreach ($synonyms as $synonym) {
+          $synonym->synonym = drupal_strtolower($synonym->synonym);
+          unset($missing[$synonym->synonym]);
+          $tids[] = $synonym->entity_id;
+        }
       }
     }
 

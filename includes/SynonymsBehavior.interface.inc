@@ -99,52 +99,80 @@ interface SynonymsSynonymsBehavior extends SynonymsBehavior {
   public function synonymItemHash($item, $field, $instance);
 
   /**
-   * Search whether there is a provided synonym stored in a provided field.
+   * Look up entities by their synonyms within a provided field.
    *
-   * Determine if there are any entities that have the provided $synonym as
-   * their synonym particularly stored within the provided field.
+   * You are provided with a SQL condition that you should apply to the storage
+   * of synonyms within the provided field. And then return result: what
+   * entities match by the provided condition through what synonyms.
    *
-   * @param string $synonym
-   *   What synonym should be sought for
+   * @param QueryConditionInterface $condition
+   *   Condition that defines what to search for. It may contain a placeholder
+   *   of AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER which you should
+   *   replace by the column name where the synonyms data for your field is
+   *   stored in plain text. For it to do, you may extend the
+   *   AbstractSynonymsSynonymsBehavior class and then just invoke the
+   *   AbstractSynonymsSynonymsBehavior->synonymsFindProcessCondition() method,
+   *   so you won't have to worry much about it
    * @param array $field
    *   Field API field definition array of the field within which the search
-   *   for synonym should be performed
+   *   for synonyms should be performed
    * @param array $instance
    *   Field API instance definition array of the instance within which the
-   *   search for synonym should be performed
+   *   search for synonyms should be performed
    *
-   * @return array
-   *   An array of entity IDs that have $synonym as their synonym stored in the
-   *   provided field
+   * @return Traversable
+   *   Traversable result set of found synonyms and entity IDs to which those
+   *   belong. Each element in the result set should be an object and will have
+   *   the following structure:
+   *   - synonym: (string) Synonym that was found and which satisfies the
+   *     provided condition
+   *   - entity_id: (int) ID of the entity to which the found synonym belongs
    */
-  public function synonymFind($synonym, $field, $instance);
+  public function synonymsFind(QueryConditionInterface $condition, $field, $instance);
+}
 
-  // TODO: move this method back into AutocompleteSynonymsBehavior where it
-  // belongs.
+/**
+ * Exception thrown by implementations of SynonymsSynonymsBehavior interface.
+ */
+class SynonymsSynonymsBehaviorException extends Exception {}
+
+/**
+ * Starting point for implementing SynonymsSynonymsBehavior interface.
+ */
+abstract class AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehavior {
+
   /**
-   * Allow you to include entities for autocomplete suggestion that are possible
-   * candidates based on your field as a source of synonyms. This method should
-   * alter $query by adding your condition to it. Additionally, you are expected
-   * to return either TRUE or FALSE, which either allow or disallow execution
-   * of the $query (you may want to disallow its execution if you know
-   * beforehand that it won't yield any result and thus saving execution of a
-   * useless SELECT).
+   * Constant which denotes placeholder of a synonym column.
    *
-   * @param string $tag
-   *   What user has typed in into autocomplete widget. Normally you would
-   *   run LIKE '%$tag%' on your column
-   * @param EntityFieldQuery $query
-   *   EntityFieldQuery object where you should put your conditions to
-   * @param array $field
-   *   Array of field definition according to Field API
-   * @param array $instance
-   *   Array of instance definition according to Field API
-   *
-   * @return bool
-   *   Whether to execute the $query. You may want to call its execution off, if
-   *   you know the query won't yield any result set anyway.
+   * @var string
    */
-  public function processEntityFieldQuery($tag, EntityFieldQuery $query, $field, $instance);
+  const COLUMN_PLACEHOLDER = '***COLUMN***';
+
+  /**
+   * Process condition in 'synonymsFind' method.
+   *
+   * Process condition in 'synonymsFind' method replacing all references of
+   * synonym column with the real name of that column.
+   *
+   * @param QueryConditionInterface $condition
+   *   Condition that should be processed
+   * @param string $column
+   *   Real name of the synonym column
+   */
+  protected function synonymsFindProcessCondition(QueryConditionInterface $condition, $column) {
+    $condition_array = &$condition->conditions();
+    foreach ($condition_array as &$v) {
+      if (is_array($v) && isset($v['field'])) {
+        if ($v['field'] instanceof QueryConditionInterface) {
+          // Recursively process this condition too.
+          $this->synonymsFindProcessCondition($v['field'], $column);
+        }
+        else {
+          $v['field'] = str_replace(self::COLUMN_PLACEHOLDER, $column, $v['field']);
+        }
+      }
+    }
+  }
 }
 
 /**

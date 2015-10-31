@@ -70,6 +70,17 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
   $tags_typed = drupal_explode_tags($tags_typed);
   $tag_last = drupal_strtolower(array_pop($tags_typed));
 
+  $tags_typed_tids = array();
+  if (!empty($tags_typed)) {
+    $efq = new EntityFieldQuery();
+    $efq->entityCondition('entity_type', 'taxonomy_term');
+    $efq->propertyCondition('name', $tags_typed);
+    $tags_typed_tids = $efq->execute();
+    if (isset($tags_typed_tids['taxonomy_term'])) {
+      $tags_typed_tids = array_keys($tags_typed_tids['taxonomy_term']);
+    }
+  }
+
   $term_matches = array();
   if ($tag_last != '') {
     // Part of the criteria for the query come from the field's own settings.
@@ -94,8 +105,8 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
     $query->addTag('term_access');
 
     // Do not select already entered terms.
-    if (!empty($tags_typed)) {
-      $query->condition('t.name', $tags_typed, 'NOT IN');
+    if (!empty($tags_typed_tids)) {
+      $query->condition('t.tid', $tags_typed_tids, 'NOT IN');
     }
     // Select rows that match by term name.
     $result = $query
@@ -110,78 +121,60 @@ function synonyms_autocomplete($field_name, $entity_type, $bundle, $tags_typed =
       $tags_return[] = $v;
     }
 
-    $synonym_tids = array();
     // Now we go vocabulary by vocabulary looking through synonym fields.
     foreach ($vocabularies as $vocabulary) {
       // Now we go a synonym field by synonym field gathering suggestions.
-      // Since officially EntityFieldQuery doesn't support OR conditions
-      // we are enforced to go a field by field querying multiple times the DB.
       $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
 
       $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $bundle, TRUE);
       foreach ($behavior_implementations as $implementation) {
-        $field = field_info_field($implementation['field_name']);
-        $instance = field_info_instance($implementation['entity_type'], $implementation['field_name'], $implementation['bundle']);
-        $query = new EntityFieldQuery();
-        $query->entityCondition('entity_type', $implementation['entity_type'])
-          ->entityCondition('bundle', $bundle);
+        $condition = db_and();
+        $condition->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like($tag_last) . '%', 'LIKE');
 
-        $object = synonyms_behavior_implementation_class('autocomplete', $field);
-        $object = new $object();
-        if ($object->processEntityFieldQuery($tag_last, $query, $field, $instance) !== FALSE) {
-          if (!empty($tags_typed)) {
-            $query->propertyCondition('name', $tags_typed, 'NOT IN');
+        if (!empty($tags_typed_tids)) {
+          $condition->condition('entity_id', $tags_typed_tids, 'NOT IN');
+        }
+        if ($suggest_only_unique && !empty($tags_return)) {
+          $tmp = array();
+          foreach ($tags_return as $tag_return) {
+            $tmp[] = $tag_return['tid'];
           }
-          if ($suggest_only_unique && !empty($tags_return)) {
-            $tmp = array();
-            foreach ($tags_return as $tag_return) {
-              $tmp[] = $tag_return['tid'];
-            }
-            // We don't want to search among the terms already found by term name.
-            $query->entityCondition('entity_id', $tmp, 'NOT IN');
-          }
+          $condition->condition('entity_id', $tmp, 'NOT IN');
+        }
 
-          if ($suggest_only_unique && !empty($synonym_tids)) {
-            // We also don't want to search among the terms already matched by
-            // previous synonym fields.
-            $query->entityCondition('entity_id', array_keys($synonym_tids), 'NOT IN');
-          }
-
-          $tmp = $query->execute();
-          if (!empty($tmp)) {
-            // Merging the results.
-            $tmp = array_keys($tmp['taxonomy_term']);
-            $synonym_tids += array_fill_keys($tmp, $implementation);
+        $new_tids = array();
+        foreach (synonyms_synonyms_find_behavior($condition, $implementation) as $synonym) {
+          if (!$suggest_only_unique || !in_array($synonym->entity_id, $new_tids)) {
+            $tags_return[] = array(
+              'tid' => $synonym->entity_id,
+              'name' => '',
+              'synonym' => $synonym->synonym,
+              'implementation' => $implementation,
+            );
+            $new_tids[] = $synonym->entity_id;
           }
         }
       }
     }
 
-    if (!empty($synonym_tids)) {
-      foreach (taxonomy_term_load_multiple(array_keys($synonym_tids)) as $synonym_term) {
-        $tmp = array(
-          'name' => $synonym_term->name,
-          'tid' => $synonym_term->tid,
-        );
-        // Additionally we have to find out which synonym triggered inclusion of
-        // this term.
-        $implementation = $synonym_tids[$synonym_term->tid];
-        $instance = field_info_instance($implementation['entity_type'], $implementation['field_name'], $implementation['bundle']);
-        foreach (synonyms_extract_synonyms($synonym_term, $implementation) as $synonym) {
-          if (strpos(mb_strtoupper($synonym, 'UTF-8'), mb_strtoupper($tag_last, 'UTF-8')) !== FALSE) {
-            $tags_return[] = $tmp + array(
-                'wording' => format_string(filter_xss($implementation['settings']['wording']), array(
-                  '@synonym' => $synonym,
-                  '@term' => $synonym_term->name,
-                  '@field_name' => drupal_strtolower($instance['label']),
-                )),
-              );
-            if ($suggest_only_unique) {
-              // We just want to output 1 single suggestion entry per term, so
-              // one synonym is enough.
-              break;
-            }
-          }
+    $synonym_terms = array();
+    foreach ($tags_return as $v) {
+      if (isset($v['synonym'])) {
+        $synonym_terms[] = $v['tid'];
+      }
+    }
+
+    if (!empty($synonym_terms)) {
+      $synonym_terms = taxonomy_term_load_multiple($synonym_terms);
+      foreach ($tags_return as &$v) {
+        if (isset($v['synonym'])) {
+          $instance = field_info_instance($v['implementation']['entity_type'], $v['implementation']['field_name'], $v['implementation']['bundle']);
+          $v['name'] = $synonym_terms[$v['tid']]->name;
+          $v['wording'] = format_string(filter_xss($v['implementation']['settings']['wording']), array(
+            '@synonym' => $v['synonym'],
+            '@term' => $v['name'],
+            '@field_name' => drupal_strtolower($instance['label']),
+          ));
         }
       }
     }
