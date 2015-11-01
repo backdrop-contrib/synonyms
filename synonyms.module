@@ -343,6 +343,9 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
             drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
           ),
         ),
+        '#attributes' => array(
+          'class' => array('synonyms-autocomplete'),
+        ),
       );
       break;
 

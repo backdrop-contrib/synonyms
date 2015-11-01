@@ -65,6 +65,8 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
       $form['value']['#autocomplete_path'] = $autocomplete_path . '/' . $this->definition['field_name'] . '/' . $field_entity_type . '/' . $bundle;
       $form['value']['#size'] = $size;
       $form['value']['#auto_creation'] = FALSE;
+      $form['value']['#attributes']['class'][] = 'synonyms-autocomplete';
+      $form['value']['#attached']['js'][drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js'] = array();
       $this->options['type'] = 'synonyms_autocomplete';
     }
   }
