@@ -54,6 +54,13 @@ function synonyms_ctools_plugin_directory($owner, $plugin_type) {
           return 'plugins/' . $plugin_type;
       }
       break;
+
+    case 'ctools':
+      switch ($plugin_type) {
+        case 'arguments':
+          return 'plugins/' . $plugin_type;
+      }
+      break;
   }
 }
 
