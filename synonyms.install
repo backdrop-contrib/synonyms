@@ -183,5 +183,6 @@ function synonyms_update_7102() {
         }
       }
     }
+    variable_del($row->name);
   }
 }
