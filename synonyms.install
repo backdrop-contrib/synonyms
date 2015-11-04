@@ -170,7 +170,7 @@ function synonyms_update_7102() {
 
             case 'autocomplete':
               $settings = array(
-                'wording' => '@synonym is a synonym of @term',
+                'wording' => '@synonym, synonym of @term',
               );
               break;
           }
