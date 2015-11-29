@@ -25,9 +25,10 @@ Other modules may extend this list by implementing "synonyms" behavior for other
 
 Synonyms behaviors are some useful for the end user features that leverage the synonyms data. Synonyms module ships with the following behaviors:
 <ul>
-    <li>Synonyms: just the basic behavior which allows to extract synonyms from a field and to search for a synonym within a field. Normally we advice to enable this behavior for all fields that one way or another are seen as source of synonyms. This behavior has many various goodies, such as support for synonym-friendly Views contextual filter, adding another entity as synonym, etc.</li>
-    <li>Autocomplete: behavior that allows synonyms to participate in the synonyms friendly autocomplete functionality.</li>
-    <li>Search: behavior that integrates synonyms with Search module, i.e. your nodes can be found not only by names of the terms they reference, but also by the synonyms of those terms.</li>
+    <li>Synonyms: just the basic behavior which allows to extract synonyms from a field and to search for a synonym within a field. Normally we advice to enable this behavior for all fields that one way or another are seen as source of synonyms. This behavior has many various goodies, such as support for synonym-friendly Views contextual filter and panels argument, adding another entity as synonym, etc.</li>
+    <li>Autocomplete: allows synonyms to participate in the synonyms friendly autocomplete functionality.</li>
+    <li>Select: allows synonyms to participate in the synonyms friendly select.</li>
+    <li>Search: behavior that integrates synonyms with Search module, i.e. your nodes can be found not only by names of the terms they reference, but also by the synonyms of those terms. It also integrates with <a href="https://www.drupal.org/project/term_search">Term Search</a> module in the same manner: when searching for terms you can also find them by their synonyms.</li>
 </ul>
 
 Similarly, as with field independency, other modules can introduce their own behaviors. If you are interested in introducing your own behavior, refer to <a href="&topic:synonyms/synonyms_behaviors&">synonyms behaviors</a> page.
@@ -41,6 +42,7 @@ Behavior implementations connect behaviors to field types. Synonyms module ships
             <th>Field type \ Behavior</th>
             <th>General synonyms</th>
             <th>Autocomplete</th>
+            <th>Select</th>
             <th>Search</th>
         </tr>
     </thead>
@@ -50,15 +52,18 @@ Behavior implementations connect behaviors to field types. Synonyms module ships
             <td>implemented</td>
             <td>implemented</td>
             <td>implemented</td>
+            <td>implemented</td>
         </tr>
         <tr>
             <td><b>Term reference</b></td>
             <td>implemented</td>
             <td>implemented</td>
             <td>implemented</td>
+            <td>implemented</td>
         </tr>
         <tr>
             <td><b>Entity reference</b></td>
+            <td>implemented</td>
             <td>implemented</td>
             <td>implemented</td>
             <td>implemented</td>

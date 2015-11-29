@@ -5,11 +5,12 @@ The Synonyms module extends the Drupal core Taxonomy features. Currently
 the module provides this additional functionality:
 * support of synonyms through Field API. Any field, for which synonyms behavior
    exists, can be enabled as source of synonyms.
-* synonym-friendly autocomplete widget for taxonomy_term_reference fields
+* synonyms-friendly autocomplete and select widgets for taxonomy_term_reference
+   fields
 * integration with Drupal search functionality through Synonyms Search
    submodule. It enables searching content by synonyms of the terms that the
    content references. Synonyms Search submodule also integrates with Term
-   Search contributed module in fashion that allows your terms to be found by
+   Search contributed module in a fashion that allows your terms to be found by
    their synonyms.
 * integration with Search API. If you include synonyms of a term into your
    Search API search index, your clients will be able to find content with
@@ -32,11 +33,11 @@ Module ships with ability to use the following field types as synonyms:
 * Decimal
 
 If you want to implement your own synonyms behavior that would enable support
-for any other field type, please, refer to synonyms.api.php file for
-instructions on how to do it, or file an issue against Synonyms module. We will
-try to implement support for your field type too. If you have written your
-synonyms behavior implementation, please share by opening an issue, and it will
-be included into this module.
+for any other field type, refer to synonyms.api.php file for instructions on how
+to do it, or file an issue against Synonyms module. We will try to implement
+support for your field type too. If you have written your synonyms behavior
+implementation, please share by opening an issue, and it will be included into
+this module.
 
 -- GRANULATION WITHIN SYNONYMS BEHAVIOR --
 
@@ -54,9 +55,12 @@ integration behavior. Currently the following synonym behaviors are recognized
    autocomplete suggestions. This module ships an autocomplete synonyms friendly
    widget and its autocomplete suggestions will be filled in with the content of
    the fields that have enabled this behavior.
-* Search integration - allow your content to be found by synonyms of the terms
-   it references. Your nodes  will be found by all synonyms that have this
-   behavior enabled.
+* Select - whether content of this field should be included in the synonyms
+   friendly select widget.
+* Search integration (requires Synonyms Search enabled) - allows your content to
+   be found by synonyms of the terms it references. Your nodes  will be found by
+   all synonyms that have this behavior enabled.
+
 Therefore, on the vocabulary edit page you will see a table, where rows are
 fields that can become synonyms and columns are these "synonym behaviors" and
 you decide what synonym behaviors to activate on what fields.

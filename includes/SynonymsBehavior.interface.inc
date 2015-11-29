@@ -16,7 +16,7 @@ interface SynonymsBehavior {
 /**
  * Interface of "synonyms" behavior.
  *
- * The most most basic synonyms behavior.
+ * The most basic synonyms behavior.
  */
 interface SynonymsSynonymsBehavior extends SynonymsBehavior {
 
