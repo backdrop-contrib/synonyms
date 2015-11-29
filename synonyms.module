@@ -864,6 +864,8 @@ function synonyms_views_api() {
  * @param bool $only_enabled
  *   Optional filter to limit the search for existing implementations only to
  *   those that are currently enabled
+ * @param bool $include_deleted
+ *   Optional filter to include the behaviors from deleted instances
  *
  * @return array
  *   Array of loaded existing synonyms behavior implementations. It is keyed
@@ -883,7 +885,7 @@ function synonyms_views_api() {
  *   - instance_id: (int) ID of the instance to which this behavior
  *     implementation applies
  */
-function synonyms_behavior_get($behavior, $entity_type = NULL, $bundle = NULL, $only_enabled = FALSE) {
+function synonyms_behavior_get($behavior, $entity_type = NULL, $bundle = NULL, $only_enabled = FALSE, $include_deleted = FALSE) {
   $behavior_implementation_info = synonyms_behavior_implementation_info($behavior);
   $supported_field_types = array_keys($behavior_implementation_info);
 
@@ -900,7 +902,9 @@ function synonyms_behavior_get($behavior, $entity_type = NULL, $bundle = NULL, $
   if ($bundle) {
     $query->condition('i.bundle', $bundle);
   }
-  $query->condition('i.deleted', 0);
+  if (!$include_deleted) {
+    $query->condition('i.deleted', 0);
+  }
 
   $settings_alias = $query->addJoin($only_enabled ? 'INNER' : 'LEFT OUTER', 'synonyms_settings', 's', 's.instance_id = i.id AND s.behavior = :behavior', array(
     ':behavior' => $behavior,
@@ -1039,7 +1043,7 @@ function synonyms_behavior_settings_delete($instance_id, $behavior) {
   $disabled_callback = ctools_plugin_get_function($behavior_definition, 'disabled callback');
   if ($disabled_callback) {
     $instance = synonyms_instance_id_load($instance_id);
-    $behavior_implementation = synonyms_behavior_get($behavior, $instance['entity_type'], $instance['bundle']);
+    $behavior_implementation = synonyms_behavior_get($behavior, $instance['entity_type'], $instance['bundle'], FALSE, TRUE);
     $behavior_implementation = $behavior_implementation[$instance_id];
     $disabled_callback($behavior_definition, $behavior_implementation, $instance);
   }
