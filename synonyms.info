@@ -4,6 +4,8 @@ package = Taxonomy
 core = 7.x
 dependencies[] = taxonomy
 dependencies[] = ctools
+dependencies[] = entity
+dependencies[] = entityreference
 
 files[] = synonyms.test
 

@@ -63,12 +63,12 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
         foreach ($bundles as $bundle) {
           $condition = db_and();
           if ($transform) {
-            $condition->where("REPLACE(" . AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :argument", array(
+            $condition->where("REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :argument", array(
               ':argument' => $argument,
             ));
           }
           else {
-            $condition->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $argument);
+            $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $argument);
           }
           $synonyms = synonyms_synonyms_find($condition, 'taxonomy_term', $bundle);
           if (!empty($synonyms)) {

@@ -154,7 +154,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
       if (!empty($missing)) {
         $condition = db_or();
         foreach ($missing as $tag => $v) {
-          $condition->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $tag);
+          $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $tag);
         }
         $synonyms = synonyms_synonyms_find_behavior($condition, $behavior_implementation);
         foreach ($synonyms as $synonym) {

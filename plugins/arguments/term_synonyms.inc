@@ -66,12 +66,12 @@ function synonyms_term_synonyms_context($arg = NULL, $conf = NULL, $empty = FALS
       foreach ($vocabularies as $vocabulary) {
         $condition = db_and();
         if ($conf['transform']) {
-          $condition->where("REPLACE(" . AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :argument", array(
+          $condition->where("REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :argument", array(
             ':argument' => $arg,
           ));
         }
         else {
-          $condition->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $arg);
+          $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $arg);
         }
         $rows = synonyms_synonyms_find($condition, 'taxonomy_term', $vocabulary->machine_name);
         if (!empty($rows)) {

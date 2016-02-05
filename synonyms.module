@@ -11,16 +11,58 @@
 function synonyms_menu() {
   $items = array();
 
-  $items['synonyms/autocomplete/%/%/%'] = array(
+  $items['admin/structure/synonyms'] = array(
+    'title' => 'Synonyms',
+    'description' => 'Manage synonyms settings for all entity types.',
+    'page callback' => 'synonyms_settings_overview',
+    'access arguments' => array('administer synonyms'),
+    'file' => 'synonyms.pages.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/structure/synonyms/%synonyms_entity_type/%synonyms_bundle'] = array(
+    'title' => 'Synonyms settings',
+    'title callback' => 'synonyms_settings_title',
+    'title arguments' => array(3, 4),
+    'description' => 'Manage synonyms settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('synonyms_settings_form', 3, 4),
+    'access arguments' => array('administer synonyms'),
+    'load arguments' => array(3),
+    'file' => 'synonyms.pages.inc',
+  );
+
+  $items['synonyms/autocomplete-taxonomy-term/%/%/%'] = array(
     'title' => 'Autocomplete Synonyms',
-    'page callback' => 'synonyms_autocomplete',
+    'page callback' => 'synonyms_autocomplete_taxonomy_term',
     'page arguments' => array(2, 3, 4),
     'access arguments' => array('access content'),
     'file' => 'synonyms.pages.inc',
     'type' => MENU_CALLBACK,
   );
 
+  $items['synonyms/autocomplete-entity/%/%/%'] = array(
+    'title' => 'Autocomplete Synonyms',
+    'page callback' => 'synonyms_autocomplete_entity',
+    'page arguments' => array(2, 3, 4),
+    'access callback' => 'entityreference_autocomplete_access_callback',
+    'access arguments' => array('tags', 2, 3, 4),
+    'file' => 'synonyms.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
   return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function synonyms_permission() {
+  return array(
+    'administer synonyms' => array(
+      'title' => t('Administer synonyms'),
+      'description' => t('Administer synonyms of all entity types.'),
+    ),
+  );
 }
 
 /**
@@ -81,16 +123,22 @@ function synonyms_theme() {
  */
 function synonyms_entity_property_info() {
   $info = array();
-  $properties = &$info['taxonomy_term']['properties'];
-  $properties['synonyms'] = array(
-    'label' => t('Synonyms'),
-    'description' => t('Synonyms of entity.'),
-    'type' => 'list<text>',
-    'getter callback' => 'synonyms_get_sanitized',
-    'computed' => TRUE,
-    'sanitized' => TRUE,
-    'raw getter callback' => 'synonyms_get_raw',
-  );
+
+  foreach (entity_get_info() as $entity_type => $entity_info) {
+    $entity_info = synonyms_entity_type_load($entity_type);
+    if ($entity_info) {
+      $info[$entity_type]['properties']['synonyms'] = array(
+        'label' => t('Synonyms'),
+        'description' => t('Synonyms of entity.'),
+        'type' => 'list<text>',
+        'getter callback' => 'synonyms_get_sanitized',
+        'computed' => TRUE,
+        'sanitized' => TRUE,
+        'raw getter callback' => 'synonyms_get_raw',
+      );
+    }
+  }
+
   return $info;
 }
 
@@ -115,7 +163,6 @@ function synonyms_synonyms_behavior_implementation_info($behavior) {
   switch ($behavior) {
     case 'autocomplete':
     case 'select':
-    case 'synonyms':
       return array(
         'number_integer' => 'TextSynonymsBehavior',
         'number_decimal' => 'TextSynonymsBehavior',
@@ -133,6 +180,8 @@ function synonyms_synonyms_behavior_implementation_info($behavior) {
  * Implements hook_form_FORM_ID_alter().
  */
 function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
+  // TODO: remove this function after a few releases of Synonyms module, since
+  // now the module oversees synonyms of all entities, not only taxonomy terms.
   if (isset($form_state['confirm_delete']) && $form_state['confirm_delete']) {
     return;
   }
@@ -145,99 +194,14 @@ function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
     '#type' => 'fieldset',
     '#title' => t('Synonyms'),
     '#collapsible' => TRUE,
-    '#tree' => TRUE,
   );
 
-  $behaviors = synonyms_behaviors();
-  $bundle = field_extract_bundle('taxonomy_term', $form['#vocabulary']);
-
-  $form['synonyms']['behaviors'] = array(
-    '#theme' => 'synonyms_behaviors_settings',
-    '#id' => 'synonyms-behaviors-settings-wrapper',
+  $form['synonyms']['link'] = array(
+    '#markup' => t('You can configure synonyms of @vocabulary following <a href="@url">this link</a>.', array(
+      '@vocabulary' => $form['#vocabulary']->name,
+      '@url' => url('admin/structure/synonyms/taxonomy_term/' . $form['#vocabulary']->machine_name, array('query' => drupal_get_destination())),
+    )),
   );
-
-  foreach ($behaviors as $behavior => $behavior_info) {
-    $form['synonyms']['behaviors'][$behavior] = array(
-      '#title' => $behavior_info['title'],
-    );
-
-    $behavior_implementations = synonyms_behavior_get($behavior, 'taxonomy_term', $bundle);
-
-    foreach ($behavior_implementations as $implementation) {
-      $instance = field_info_instance($implementation['entity_type'], $implementation['field_name'], $implementation['bundle']);
-      $form['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['#title'] = $instance['label'];
-
-      if (isset($form_state['values']['synonyms']['behaviors'][$behavior][$implementation['instance_id']])) {
-        $behavior_settings = (bool) $form_state['values']['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['enabled'];
-      }
-      else {
-        $behavior_settings = !is_null($implementation['settings']);
-      }
-      if ($behavior_settings) {
-        if (isset($form_state['values']['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['settings'])) {
-          $behavior_settings = $form_state['values']['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['settings'];
-        }
-        elseif ($implementation['settings']) {
-          $behavior_settings = $implementation['settings'];
-        }
-        else {
-          $behavior_settings = array();
-        }
-      }
-
-      $form['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['enabled'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Enable'),
-        '#default_value' => $behavior_settings !== FALSE,
-      );
-
-      $settings_form = ctools_plugin_get_function($behavior_info, 'settings form callback');
-      if ($settings_form) {
-        $form['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['enabled']['#ajax'] = array(
-          'callback' => 'synonyms_behaviors_settings_form_ajax',
-          'wrapper' => $form['synonyms']['behaviors']['#id'],
-        );
-
-        if ($behavior_settings !== FALSE) {
-          $form['synonyms']['behaviors'][$behavior][$implementation['instance_id']]['settings'] = $settings_form($form, $form_state, $behavior_settings);
-        }
-      }
-    }
-  }
-  $form['#submit'][] = 'synonyms_taxonomy_form_vocabulary_submit';
-}
-
-/**
- * Submit handler for Taxonomy vocabulary edit form.
- *
- * Store synonyms behavior settings.
- */
-function synonyms_taxonomy_form_vocabulary_submit($form, &$form_state) {
-  $values = $form_state['values'];
-
-  if ($values['op'] == $form['actions']['submit']['#value']) {
-    foreach ($values['synonyms']['behaviors'] as $behavior => $settings) {
-      foreach ($settings as $instance_id => $behavior_settings) {
-        if ($behavior_settings['enabled']) {
-          synonyms_behavior_settings_save(array(
-            'instance_id' => $instance_id,
-            'behavior' => $behavior,
-            'settings' => isset($behavior_settings['settings']) ? $behavior_settings['settings'] : NULL,
-          ));
-        }
-        else {
-          synonyms_behavior_settings_delete($instance_id, $behavior);
-        }
-      }
-    }
-  }
-}
-
-/**
- * Ajax callback function for synonyms behavior settings form.
- */
-function synonyms_behaviors_settings_form_ajax($form, &$form_state) {
-  return $form['synonyms']['behaviors'];
 }
 
 /**
@@ -245,12 +209,12 @@ function synonyms_behaviors_settings_form_ajax($form, &$form_state) {
  */
 function synonyms_field_widget_info() {
   return array(
-    'synonyms_autocomplete' => array(
-      'label' => t('Synonyms friendly autocomplete term widget'),
+    'synonyms_autocomplete_taxonomy_term' => array(
+      'label' => t('Synonyms friendly autocomplete'),
       'field types' => array('taxonomy_term_reference'),
       'settings' => array(
         'size' => 60,
-        'synonyms_autocomplete_path' => 'synonyms/autocomplete',
+        'synonyms_autocomplete_path' => 'synonyms/autocomplete-taxonomy-term',
         'suggestion_size' => 10,
         'suggest_only_unique' => FALSE,
         'auto_creation' => 1,
@@ -259,12 +223,34 @@ function synonyms_field_widget_info() {
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
       ),
     ),
-    'synonyms_select' => array(
+    'synonyms_autocomplete_entity' => array(
+      'label' => t('Synonyms friendly autocomplete'),
+      'field types' => array('entityreference'),
+      'settings' => array(
+        'size' => 60,
+        'synonyms_autocomplete_path' => 'synonyms/autocomplete-entity',
+        'suggestion_size' => 10,
+        'suggest_only_unique' => FALSE,
+        'auto_creation' => FALSE,
+      ),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+      ),
+    ),
+    'synonyms_select_taxonomy_term' => array(
       'label' => t('Synonyms friendly select list'),
       'field types' => array('taxonomy_term_reference'),
       'settings' => array(
         'sort' => 'weight',
       ),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+      ),
+    ),
+    'synonyms_select_entity' => array(
+      'label' => t('Synonyms friendly select list'),
+      'field types' => array('entityreference'),
+      'settings' => array(),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
       ),
@@ -282,13 +268,16 @@ function synonyms_field_widget_settings_form($field, $instance) {
   $form = array();
 
   switch  ($widget['type']) {
-    case 'synonyms_autocomplete':
-      $form['auto_creation'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Allow auto-creation?'),
-        '#description' => t('Whether users may create a new term by typing in a non-existing name into this field.'),
-        '#default_value' => $settings['auto_creation'],
-      );
+    case 'synonyms_autocomplete_taxonomy_term':
+    case 'synonyms_autocomplete_entity':
+      if ($widget['type'] == 'synonyms_autocomplete_taxonomy_term') {
+        $form['auto_creation'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Allow auto-creation?'),
+          '#description' => t('Whether users may create a new term by typing in a non-existing name into this field.'),
+          '#default_value' => $settings['auto_creation'],
+        );
+      }
 
       $form['suggestion_size'] = array(
         '#type' => 'textfield',
@@ -307,7 +296,7 @@ function synonyms_field_widget_settings_form($field, $instance) {
       );
       break;
 
-    case 'synonyms_select':
+    case 'synonyms_select_taxonomy_term':
       $form['sort'] = array(
         '#type' => 'radios',
         '#title' => t('Sort'),
@@ -329,21 +318,43 @@ function synonyms_field_widget_settings_form($field, $instance) {
  */
 function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $default_value = array();
+  $column = array_keys($field['columns']);
+  $column = reset($column);
   foreach ($items as $item) {
-    $default_value[] = $item['tid'];
+    $default_value[] = $item[$column];
   }
 
   switch ($instance['widget']['type']) {
-    case 'synonyms_autocomplete':
-      $tags = taxonomy_term_load_multiple($default_value);
+    case 'synonyms_autocomplete_taxonomy_term':
+    case 'synonyms_autocomplete_entity':
+      switch ($instance['widget']['type']) {
+        case 'synonyms_autocomplete_taxonomy_term':
+          $default_value_string = taxonomy_implode_tags(taxonomy_term_load_multiple($default_value));
+          $element_validate = array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_taxonomy_term_validate');
+          break;
+
+        case 'synonyms_autocomplete_entity':
+          $default_value_string = array();
+          $entity = isset($element['#entity']) ? $element['#entity'] : NULL;
+          $handler = entityreference_get_selection_handler($field, $instance, $instance['entity_type'], $entity);
+
+          $target_entities = entity_load($field['settings']['target_type'], $default_value);
+          foreach ($target_entities as $target_entity_id => $target_entity) {
+            $default_value_string[] = synonyms_autocomplete_escape($handler->getLabel($target_entity));
+          }
+          $default_value_string = implode(', ', $default_value_string);
+
+          $element_validate = array('synonyms_autocomplete_entity_validate');
+          break;
+      }
 
       $element += array(
         '#type' => 'textfield',
-        '#default_value' => taxonomy_implode_tags($tags),
+        '#default_value' => $default_value_string,
         '#autocomplete_path' => $instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
         '#size' => $instance['widget']['settings']['size'],
         '#maxlength' => 1024,
-        '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
+        '#element_validate' => $element_validate,
         '#auto_creation' => $instance['widget']['settings']['auto_creation'],
         '#attached' => array(
           'js' => array(
@@ -356,7 +367,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
       );
       break;
 
-    case 'synonyms_select':
+    case 'synonyms_select_taxonomy_term':
       $multiple = $field['cardinality'] > 1 || $field['cardinality'] == FIELD_CARDINALITY_UNLIMITED;
 
       $options = array();
@@ -367,10 +378,10 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
               if ($terms = taxonomy_get_tree($vocabulary->vid, $tree['parent'], NULL, TRUE)) {
                 $behavior_implementations = synonyms_behavior_get('select', 'taxonomy_term', field_extract_bundle('taxonomy_term', $vocabulary), TRUE);
                 foreach ($terms as $term) {
-                  $options[] = synonyms_select_option($term);
+                  $options[] = synonyms_select_option_entity($term, 'taxonomy_term', NULL, NULL, array('depth'));
                   foreach ($behavior_implementations as $implementation) {
                     foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
-                      $options[] = synonyms_select_option($term, $synonym, $implementation);
+                      $options[] = synonyms_select_option_entity($term, 'taxonomy_term', $synonym, $implementation, array('depth'));
                     }
                   }
                 }
@@ -379,14 +390,10 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
 
             case 'name':
               // TODO: is there any way to leverage DB for the sorting routine?
-              $options = synonyms_select_sort_name_options_recursive($vocabulary, $tree['parent']);
+              $options = synonyms_select_taxonomy_term_sort_name_options_recursive($vocabulary, $tree['parent']);
               break;
           }
         }
-      }
-
-      if (!$multiple && !$element['#required']) {
-        $options = array('' => t('- None -')) + $options;
       }
 
       $element += array(
@@ -395,6 +402,50 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
         '#options' => $options,
         '#default_value' => $default_value,
         '#element_validate' => array('synonyms_select_form_to_storage'),
+        '#empty_option' => t('- None -'),
+      );
+      break;
+
+    case 'synonyms_select_entity':
+      $multiple = $field['cardinality'] > 1 || $field['cardinality'] == FIELD_CARDINALITY_UNLIMITED;
+
+      $options = entityreference_get_selection_handler($field, $instance, $instance['entity_type'], $element['#entity'])->getReferencableEntities();
+      $synonyms_options = array();
+
+      $target_entity_info = entity_get_info($field['settings']['target_type']);
+      $entity_ids = array();
+      foreach ($options as $bundle_entity_ids) {
+        $entity_ids = array_merge($entity_ids, array_keys($bundle_entity_ids));
+      }
+      $entities = entity_load($field['settings']['target_type'], $entity_ids);
+      foreach ($options as $bundle => $bundle_entity_ids) {
+        $synonyms_options[$target_entity_info['bundles'][$bundle]['label']] = array();
+
+        $behavior_implementations = synonyms_behavior_get('select', $field['settings']['target_type'], $bundle, TRUE);
+
+        foreach ($bundle_entity_ids as $entity_id => $v) {
+          $entity = $entities[$entity_id];
+          $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type']);
+          foreach ($behavior_implementations as $behavior_implementation) {
+            foreach (synonyms_extract_synonyms($entity, $behavior_implementation) as $synonym) {
+              $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type'], $synonym, $behavior_implementation);
+            }
+          }
+        }
+        usort($synonyms_options[$target_entity_info['bundles'][$bundle]['label']], 'synonyms_select_sort_name');
+      }
+
+      if (count($synonyms_options) == 1) {
+        $synonyms_options = reset($synonyms_options);
+      }
+
+      $element += array(
+        '#type' => 'select',
+        '#multiple' => $multiple,
+        '#options' => $synonyms_options,
+        '#default_value' => $default_value,
+        '#element_validate' => array('synonyms_select_form_to_storage'),
+        '#empty_option' => t('- None -'),
       );
       break;
   }
@@ -428,12 +479,14 @@ function synonyms_features_api() {
  *
  * Handle validation for taxonomy term synonym-friendly autocomplete element.
  */
-function synonyms_autocomplete_validate($element, &$form_state) {
+function synonyms_autocomplete_taxonomy_term_validate($element, &$form_state) {
   // After taxonomy_autocomplete_validate() has finished its job any terms it
   // didn't find have been set for autocreation. We need to:
   // (a) Double-check that those terms are not synonyms.
   // (b) Check that synonyms' configurable auto-creation option is enabled.
   $value = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
+
+  $tids = array();
 
   $field = field_widget_field($element, $form_state);
   foreach ($value as $delta => $term) {
@@ -442,7 +495,7 @@ function synonyms_autocomplete_validate($element, &$form_state) {
       foreach ($field['settings']['allowed_values'] as $tree) {
         $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $tree['vocabulary'], TRUE);
         foreach ($behavior_implementations as $behavior_implementation) {
-          $synonyms = synonyms_synonyms_find_behavior(db_and()->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $term['name']), $behavior_implementation);
+          $synonyms = synonyms_synonyms_find_behavior(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term['name']), $behavior_implementation);
           foreach ($synonyms as $synonym) {
             $synonym_tid = $synonym->entity_id;
             break(2);
@@ -450,12 +503,16 @@ function synonyms_autocomplete_validate($element, &$form_state) {
         }
       }
 
-      if ($synonym_tid != 0) {
+      if ($synonym_tid != 0 && !in_array($synonym_tid, $tids)) {
         $value[$delta]['tid'] = $synonym_tid;
+        $tids[] = $synonym_tid;
       }
       elseif (!$element['#auto_creation']) {
         unset($value[$delta]);
       }
+    }
+    else {
+      $tids[] = $term['tid'];
     }
   }
   $value = array_values($value);
@@ -463,7 +520,94 @@ function synonyms_autocomplete_validate($element, &$form_state) {
 }
 
 /**
+ * Form element validate handler.
+ *
+ * Validate entity reference synonyms friendly autocomplete element.
+ */
+function synonyms_autocomplete_entity_validate($element, &$form_state) {
+  $input = drupal_map_assoc(drupal_explode_tags(drupal_strtolower($element['#value'])));
+
+  $value = array();
+  if (!empty($input)) {
+    $field = field_info_field($element['#field_name']);
+    $instance = field_info_instance($element['#entity_type'], $field['field_name'], $element['#bundle']);
+    $handler = entityreference_get_selection_handler($field, $instance);
+    $matches = $handler->getReferencableEntities($input, 'IN');
+
+    foreach ($matches as $bundle => $entity_ids) {
+      foreach ($entity_ids as $entity_id => $label) {
+        $value[] = $entity_id;
+        unset($input[drupal_strtolower($label)]);
+      }
+    }
+
+    if (!empty($input)) {
+      $behavior_implementations = synonyms_behavior_get('autocomplete', $field['settings']['target_type'], synonyms_field_target_bundles($field), TRUE);
+      foreach ($behavior_implementations as $implementation) {
+        $condition = db_and();
+        $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $input, 'IN');
+        foreach (synonyms_synonyms_find_behavior($condition, $implementation) as $synonym) {
+          unset($input[drupal_strtolower($synonym->synonym)]);
+          $value[] = $synonym->entity_id;
+        }
+      }
+    }
+  }
+
+  $tmp = array_unique($value);
+  $value = array();
+  foreach ($tmp as $target_id) {
+    $value[] = array('target_id' => $target_id);
+  }
+
+  form_set_value($element, $value, $form_state);
+}
+
+/**
+ * Try finding an entity by its name or synonym.
+ *
+ * @param string $entity_type
+ *   What entity type is being searched
+ * @param string $name
+ *   The look up keyword (the supposed name or synonym)
+ * @param string $bundle
+ *   Optionally limit the search within a specific bundle name of the provided
+ *   entity type
+ *
+ * @return int
+ *   ID of the looked up entity. If such entity was not found, then 0 is
+ *   returned
+ */
+function synonyms_get_entity_by_synonym($entity_type, $name, $bundle = NULL) {
+  $name = trim($name);
+  $entity_info = entity_get_info($entity_type);
+  if (isset($entity_info['entity keys']['label'])) {
+    $efq = new EntityFieldQuery();
+    $efq->entityCondition('entity_type', $entity_type);
+    if ($bundle) {
+      $efq->entityCondition('bundle', $bundle);
+    }
+    $efq->propertyCondition($entity_info['entity keys']['label'], $name);
+    $result = $efq->execute();
+    if (isset($result[$entity_type])) {
+      $result = array_keys($result[$entity_type]);
+      return reset($result);
+    }
+  }
+
+  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $name), $entity_type, $bundle);
+  if (!empty($synonyms)) {
+    return reset($synonyms)->entity_id;
+  }
+  return 0;
+}
+
+/**
  * Try to find a term by its name or synonym.
+ *
+ * You are adviced to use the more general function
+ * synonyms_get_entity_by_synonym() unless you really need $parent input
+ * argument from this function for additional filtering by Taxonomy hierarchy.
  *
  * @param string $name
  *   The string to be searched for its {taxonomy_term_data}.tid
@@ -495,7 +639,7 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
   // We have failed to find a term with the provided $name. So let's search now
   // among the term synonyms.
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
-  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER, $name), 'taxonomy_term', $bundle);
+  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $name), 'taxonomy_term', $bundle);
   foreach ($synonyms as $synonym) {
     if (!$parent || synonyms_taxonomy_term_is_child_of($synonym->entity_id, $parent)) {
       // TODO: similarly here, as above, we could have more than 1 match, but
@@ -554,35 +698,35 @@ function synonyms_add_term_by_synonym($name, $vocabulary, $parent = 0) {
 }
 
 /**
- * Retrieve a list of sanitized synonyms of a taxonomy term.
+ * Retrieve list of sanitized synonyms of an entity.
  *
- * @param $item object
- *   Fully loaded taxonomy term
+ * @param $entity object
+ *   Fully loaded entity
  *
  * @return array
- *   List of sanitized synonyms of a taxonomy term
+ *   List of sanitized synonyms of an entity
  */
-function synonyms_get_sanitized($item) {
-  $synonyms = array();
-  foreach (synonyms_get_term_synonyms($item) as $synonym) {
-    $synonyms[] = $synonym['safe_value'];
-  }
-  return $synonyms;
+function synonyms_get_sanitized($entity, array $options, $name, $entity_type, &$context) {
+  return array_map('check_plain', synonyms_get_raw($entity, $options, $name, $entity_type, $context));
 }
 
 /**
- * Retrieve a list of raw synonyms of a taxonomy term.
+ * Retrieve list of raw synonyms of an entity.
  *
- * @param $item object
- *   Fully loaded taxonomy term
+ * @param $entity object
+ *   Fully loaded entity
  *
  * @return array
- *   List of raw synonyms of a taxonomy term
+ *   List of raw synonyms of an entity
  */
-function synonyms_get_raw($item) {
+function synonyms_get_raw($entity, array $options, $name, $entity_type, &$context) {
   $synonyms = array();
-  foreach (synonyms_get_term_synonyms($item) as $synonym) {
-    $synonyms[] = $synonym['value'];
+  $bundle = entity_extract_ids($entity_type, $entity);
+  $bundle = $bundle[2] ? $bundle[2] : $entity_type;
+
+  $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
+  foreach ($behavior_implementations as $implementation) {
+    $synonyms = array_merge($synonyms, synonyms_extract_synonyms($entity, $implementation));
   }
   return $synonyms;
 }
@@ -610,15 +754,15 @@ function synonyms_get_term_synonyms($term) {
   $vocabulary = taxonomy_vocabulary_load($term->vid);
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
 
-  $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
+  $behavior_implementations = synonyms_behavior_get_all_enabled('taxonomy_term', $bundle);
   foreach ($behavior_implementations as $implementation) {
     foreach  (synonyms_extract_synonyms($term, $implementation) as $synonym) {
-        $synonyms[] = array(
-          'value' => $synonym,
-          'safe_value' => check_plain($synonym),
-        );
-      }
+      $synonyms[] = array(
+        'value' => $synonym,
+        'safe_value' => check_plain($synonym),
+      );
     }
+  }
 
   return $synonyms;
 }
@@ -664,19 +808,20 @@ function synonyms_extract_synonyms($entity, $behavior_implementation) {
  * @param QueryConditionInterface $condition
  *   Object of QueryConditionInterface that specifies conditions by which you
  *   want to find synonyms. When building this condition object, use
- *   AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for
- *   real column name that contains synonym as text. For example, if you were to
- *   find all entities with synonyms that begin with "synonym-come-here"
- *   substring, case insensitive and replacing all spaces in original synonym
- *   string by a dash sign, then you would have to create the following
- *   condition object:
+ *   AbstractSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for real
+ *   column name that contains synonym as text. For example, if you were to find
+ *   all entities with synonyms that begin with "synonym-come-here" substring,
+ *   case insensitive and replacing all spaces in original synonym string by a
+ *   dash sign, then you would have to create the following condition object:
  *   db_and()
- *     ->where("LOWER(REPLACE(" . AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
+ *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
  *   And then just supply this object as an input parameter to this function
  * @param string $entity_type
  *   Among synonyms of what entity type to search
- * @param string $bundle
- *   Among synonyms of what bundle to search
+ * @param string|array $bundle
+ *   Optionally specifcy among synonyms of what bundle(-s) to search. You can
+ *   specify here a string - bundle name to search within or an array of nundles
+ *   within which to search
  *
  * @return array
  *   Array of found synonyms and entity IDs to which those belong. Each element
@@ -685,10 +830,12 @@ function synonyms_extract_synonyms($entity, $behavior_implementation) {
  *     $condition you specified
  *   - entity_id: (int) ID of the entity to which the found synonym belongs
  */
-function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type, $bundle) {
+function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type, $bundle = NULL) {
   $rows = array();
 
-  $behavior_implementations = synonyms_behavior_get('synonyms', $entity_type, $bundle, TRUE);
+  $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
+  if (!$bundle)
+  debug($behavior_implementations);
   foreach ($behavior_implementations as $behavior_implementation) {
     foreach (synonyms_synonyms_find_behavior($condition, $behavior_implementation) as $row) {
       $rows[] = $row;
@@ -716,14 +863,13 @@ function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type
  * @param QueryConditionInterface $condition
  *   Object of QueryConditionInterface that specifies conditions by which you
  *   want to find synonyms. When building this condition object, use
- *   AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for
- *   real column name that contains synonym as text. For example, if you were to
- *   find all entities with synonyms that begin with "synonym-come-here"
- *   substring, case insensitive and replacing all spaces in original synonym
- *   string by a dash sign, then you would have to create the following
- *   condition object:
+ *   AbstractSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for real
+ *   column name that contains synonym as text. For example, if you were to find
+ *   all entities with synonyms that begin with "synonym-come-here" substring,
+ *   case insensitive and replacing all spaces in original synonym string by a
+ *   dash sign, then you would have to create the following condition object:
  *   db_and()
- *     ->where("LOWER(REPLACE(" . AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
+ *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
  *   And then just supply this object as an input parameter to this function
  * @param array $behavior_implementation
  *   Fully loaded behavior implementation. Supply here one of the values from
@@ -773,27 +919,23 @@ function synonyms_synonyms_find_behavior(QueryConditionInterface $condition, $be
  *   Whether synonym has been successfully added
  */
 function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $field, $synonym_entity, $synonym_entity_type) {
-  if ($trunk_entity_type != 'taxonomy_term') {
-    // Currently synonyms module only operates on taxonomy terms.
-    return FALSE;
-  }
-
   $bundle = entity_extract_ids($trunk_entity_type, $trunk_entity);
-  $bundle = $bundle[2];
-  $behavior_implementations = synonyms_behavior_get('synonyms', $trunk_entity_type, $bundle, TRUE);
+  $bundle = $bundle[2] ? $bundle[2] : $trunk_entity_type;
+  $behavior_implementations = synonyms_behavior_get_all_enabled($trunk_entity_type, $bundle, $field);
 
   $field = field_info_field($field);
   $instance = field_info_instance($trunk_entity_type, $field['field_name'], $bundle);
-  if (!isset($behavior_implementations[$instance['id']])) {
-    // $field either doesn't exist in the $trunk_entity or it does not have
-    // enabled the behavior of synonyms.
+  if (empty($behavior_implementations)) {
+    // $field either doesn't exist in the $trunk_entity or it does not have any
+    // enabled behavior.
     return FALSE;
   }
 
   $items = field_get_items($trunk_entity_type, $trunk_entity, $field['field_name']);
   $items = is_array($items) ? $items : array();
 
-  $object = synonyms_behavior_implementation_class('synonyms', $field);
+  $behavior_implementation = reset($behavior_implementations);
+  $object = synonyms_behavior_implementation_class($behavior_implementation['behavior'], $field);
   $object = new $object();
   $extra_items = $object->mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
 
@@ -819,9 +961,8 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
   $items = array_values($unique_items);
 
   $trunk_entity->{$field['field_name']}[LANGUAGE_NONE] = $items;
-  // In future if this module eventually becomes a gateway for synonyms for any
-  // entity types, we'll substitute it with entity_save().
-  taxonomy_term_save($trunk_entity);
+
+  entity_save($trunk_entity_type, $trunk_entity);
   return TRUE;
 }
 
@@ -845,7 +986,7 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
 function synonyms_synonyms_fields($vocabulary) {
   $fields = array();
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
-  $behavior_implementations = synonyms_behavior_get('synonyms', 'taxonomy_term', $bundle, TRUE);
+  $behavior_implementations = synonyms_behavior_get_all_enabled('taxonomy_term', $bundle);
   foreach ($behavior_implementations as $v) {
     $fields[] = $v['field_name'];
   }
@@ -871,10 +1012,11 @@ function synonyms_views_api() {
  * @param string $entity_type
  *   Optional filter to limit the search for existing implementations only to
  *   those that apply to the provided entity type
- * @param string $bundle
+ * @param string|array $bundle
  *   Optional filter to limit the search for existing implementations only to
  *   those that apply to the provided bundle and entity type (the $entity_type
- *   argument)
+ *   argument). You may supply array of bundle names if you want to limit your
+ *   search within a few bundles
  * @param bool $only_enabled
  *   Optional filter to limit the search for existing implementations only to
  *   those that are currently enabled
@@ -931,6 +1073,59 @@ function synonyms_behavior_get($behavior, $entity_type = NULL, $bundle = NULL, $
   $result = $result->fetchAllAssoc('instance_id', PDO::FETCH_ASSOC);
 
   return synonyms_behavior_settings_unpack($result);
+}
+
+/**
+ * Load all enabled behaviors on an entity_type and a bundle.
+ *
+ * This is useful when you want to do some operation on all enabled synonyms
+ * behaviors for a specific entity_type and a bundle.
+ *
+ * @param string $entity_type
+ *   Entity type whose enabled behaviors should be loaded
+ * @param string|array $bundle
+ *   Optionally filter by bundle whose enabled behaviors should be loaded. You
+ *   can supply here string - single bundle name or an array of bundle names
+ * @param string $field_name
+ *   Optional filter to only return enabled synonyms behaviors of a specific
+ *   field
+ *
+ * @return array
+ *   Array of enabled behaviors for a provided entity type and a bundle. Each
+ *   sub array will have the following structure:
+ *   - behavior: (string) Name of the synonyms behavior
+ *   - settings: (mixed) Behavior settings, its internal structure depends on
+ *     the type of behavior.
+ *   - entity_type: (string) Entity type to which this behavior implementation
+ *     applies
+ *   - bundle: (string) Bundle name to which this behavior implementation
+ *     applies
+ *   - field_name: (string) Name of the field on which this synonyms behavior is
+ *     enabled
+ *   - instance_id: (int) ID of the field instance to which this behavior
+ *     implementation applies
+ */
+function synonyms_behavior_get_all_enabled($entity_type, $bundle = NULL, $field_name = NULL) {
+  $query = db_select('synonyms_settings', 's');
+  $instance_alias = $query->innerJoin('field_config_instance', 'i', 'i.id = s.instance_id');
+  $query->fields($instance_alias, array('field_name', 'entity_type', 'bundle'));
+  $query->fields('s', array('behavior', 'settings_serialized'));
+  $query->addField($instance_alias, 'id', 'instance_id');
+
+  $query->condition($instance_alias . '.entity_type', $entity_type);
+  if ($bundle) {
+    $query->condition($instance_alias . '.bundle', $bundle);
+  }
+  if ($field_name) {
+    $query->condition($instance_alias . '.field_name', $field_name);
+  }
+
+  $result = $query->execute();
+  $rows = array();
+  foreach ($result as $row) {
+    $rows[] = (array) $row;
+  }
+  return synonyms_behavior_settings_unpack($rows);
 }
 
 /**
@@ -1072,17 +1267,23 @@ function synonyms_behavior_settings_delete($instance_id, $behavior) {
  *
  * @param int $instance_id
  *   ID of the instance that should be loaded
+ * @param bool $reset
+ *   Whether to reset static cache of this function
  *
  * @return array
  *   Instance definition array
  */
-function synonyms_instance_id_load($instance_id) {
-  $result = db_select('field_config_instance', 'i')
-    ->fields('i', array('entity_type', 'bundle', 'field_name'))
-    ->condition('id', $instance_id)
-    ->execute()
-    ->fetchAssoc();
-  return field_info_instance($result['entity_type'], $result['field_name'], $result['bundle']);
+function synonyms_instance_id_load($instance_id, $reset = FALSE) {
+  $cache = &drupal_static(__FILE__, array(), $reset);
+
+  if (!isset($cache[$instance_id])) {
+    $cache[$instance_id] = db_select('field_config_instance', 'i')
+      ->fields('i', array('entity_type', 'bundle', 'field_name'))
+      ->condition('id', $instance_id)
+      ->execute()
+      ->fetchAssoc();
+  }
+  return field_info_instance($cache[$instance_id]['entity_type'], $cache[$instance_id]['field_name'], $cache[$instance_id]['bundle']);
 }
 
 /**
@@ -1102,23 +1303,24 @@ function synonyms_select_form_to_storage($element, &$form_state) {
   }
 
   foreach ($value as $k => $v) {
-    // For the cases when a synonym was selected and not a term option, we
+    // For the cases when a synonym was selected and not an entity option, we
     // process the selected values stripping everything that goes after
     // semicolon.
     if (!is_numeric($v)) {
-      $tid = explode(':', $v);
-      $value[$k] = $tid[0];
+      $id = explode(':', $v);
+      $value[$k] = $id[0];
     }
   }
 
-  // The user also might have selected multiple times the same term, given that
-  // a term can be represented by more than 1 option (a term and its synonym),
-  // then it's possible in theory, so we should be ready for this scenario.
+  // The user also might have selected multiple times the same entity, given
+  // that an entity can be represented by more than 1 option (an entity and its
+  // synonym), then it's possible in theory, so we should be ready for this
+  // scenario.
   $value = array_unique($value);
 
   $form_state_value = array();
-  foreach ($value as $tid) {
-    $form_state_value[] = array('tid' => $tid);
+  foreach ($value as $id) {
+    $form_state_value[] = array($element['#columns'][0] => $id);
   }
 
   form_set_value($element, $form_state_value, $form_state);
@@ -1155,37 +1357,53 @@ function synonyms_taxonomy_term_is_child_of($tid, $parent_tid) {
 }
 
 /**
- * Format an option for select form element.
+ * Format an option for entity reference select form element.
  *
- * @param object $term
- *   Fully loaded taxonomy term which is represented by this option
+ * @param object $entity
+ *   Fully loaded entity which is represented by this option
+ * @param string $entity_type
+ *   Entity type of the $entity object
  * @param string $synonym
- *   If the provided term is represented in this option by a synonym, then
+ *   If the provided entity is represented in this option by a synonym, then
  *   provide it here
  * @param array $behavior_implementation
  *   Behavior implementation array from which the $synonym comes from
+ * @param array $options
+ *   Array of additional settings or options that may influence execution of
+ *   this function. Currently supported options are:
+ *   - depth: Whether to prefix wording of option labels with depth of the
+ *     entity. This will work only for taxonomy term entities, as they are the
+ *     only ones that have notion of depth
  *
  * @return object
- *   An option for select form element
+ *   An option for entity reference select form element
  */
-function synonyms_select_option($term, $synonym = NULL, $behavior_implementation = NULL) {
-  $key = $synonym ? $term->tid . ':' . drupal_html_class($synonym) : $term->tid;
-  $wording = $term->name;
+function synonyms_select_option_entity($entity, $entity_type, $synonym = NULL, $behavior_implementation = NULL, $options = array()) {
+  $entity_id = entity_extract_ids($entity_type, $entity);
+  $entity_id = $entity_id[0];
+  $key = $synonym ? $entity_id . ':' . drupal_html_class($synonym) : $entity_id;
+  $wording = entity_label($entity_type, $entity);
   if ($synonym) {
     $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
     $wording = format_string($behavior_implementation['settings']['wording'], array(
       '@synonym' => $synonym,
-      '@term' => $term->name,
+      '@entity' => entity_label($behavior_implementation['entity_type'], $entity),
       '@field_name' => drupal_strtolower($instance['label']),
     ));
   }
+
+  if (in_array('depth', $options) && $entity_type == 'taxonomy_term') {
+    $depth = count(taxonomy_get_parents_all($entity_id)) - 1;
+    $wording = str_repeat('-', $depth) . $wording;
+  }
+
   return (object) array(
-    'option' => array($key => str_repeat('-', $term->depth) . $wording),
+    'option' => array($key => $wording),
   );
 }
 
 /**
- * Supportive function to build options array with sorting by name logic.
+ * Supportive function to build taxonomy term options array sorted by name.
  *
  * The function starts from the 0-depth level and starts to recursively build
  * the options and to sort the labels on each level, then it merges the bottom
@@ -1208,10 +1426,10 @@ function synonyms_select_option($term, $synonym = NULL, $behavior_implementation
  *   The options will be sorted by name (term or synonym), respecting the
  *   hierarchy restrictions
  */
-function synonyms_select_sort_name_options_recursive($vocabulary, $parent = 0, $depth = 0) {
+function synonyms_select_taxonomy_term_sort_name_options_recursive($vocabulary, $parent = 0, $depth = 0) {
   // We statically cache behavior implementations in order to not DDOS the data
   // base.
-  $behavior_implementations = drupal_static(__FUNCTION__, array());
+  $behavior_implementations = &drupal_static(__FUNCTION__, array());
 
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
   if (!isset($behavior_implementations[$bundle])) {
@@ -1223,10 +1441,10 @@ function synonyms_select_sort_name_options_recursive($vocabulary, $parent = 0, $
     $options = array();
     foreach ($terms as $term) {
       $term->depth = $depth;
-      $options[] = synonyms_select_option($term);
+      $options[] = synonyms_select_option_entity($term, 'taxonomy_term', NULL, NULL, array('depth'));
       foreach ($behavior_implementations[$bundle] as $implementation) {
         foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
-          $options[] = synonyms_select_option($term, $synonym, $implementation);
+          $options[] = synonyms_select_option_entity($term, 'taxonomy_term', $synonym, $implementation, array('depth'));
         }
       }
     }
@@ -1242,7 +1460,7 @@ function synonyms_select_sort_name_options_recursive($vocabulary, $parent = 0, $
       $tid = array_keys($v->option);
       $tid = $tid[0];
       if (is_numeric($tid)) {
-        $nested_options = synonyms_select_sort_name_options_recursive($vocabulary, $tid, $depth + 1);
+        $nested_options = synonyms_select_taxonomy_term_sort_name_options_recursive($vocabulary, $tid, $depth + 1);
         $options = array_merge(array_slice($options, 0, $i), $nested_options, array_slice($options, $i));
       }
     }
@@ -1257,4 +1475,106 @@ function synonyms_select_sort_name_options_recursive($vocabulary, $parent = 0, $
  */
 function synonyms_select_sort_name($a, $b) {
   return strcasecmp(reset($a->option), reset($b->option));
+}
+
+/**
+ * Test if entity type is applicable for having synonyms.
+ *
+ * Only fieldable entity types can have synonyms for the very reason that
+ * synonyms are stored in fields.
+ *
+ * @param string $entity_type
+ *   Entity type to test
+ *
+ * @return bool|string
+ *   Whether the provided entity type is applicable for having synonyms. If it
+ *   is applicable, the $entity_type input argument will be returned. Otherwise
+ *   FALSE is returned
+ */
+function synonyms_entity_type_load($entity_type) {
+  $entity_info = entity_get_info($entity_type);
+  if ($entity_info && $entity_info['fieldable']) {
+    return $entity_type;
+  }
+  return FALSE;
+}
+
+/**
+ * Test if provided entity type and bundle exist.
+ *
+ * @param string $bundle
+ *   Bundle name to test for existence
+ * @param string $entity_type
+ *   Entity type to test for existence
+ *
+ * @return bool|string
+ *   Whether the provided entity type and bundle exist. If they exist, the
+ *   $bundle input argument is returned. Otherwise FALSE is returned
+ */
+function synonyms_bundle_load($bundle, $entity_type) {
+  $entity_info = entity_get_info($entity_type);
+  if ($entity_info && isset($entity_info['bundles'][$bundle])) {
+    return $bundle;
+  }
+  return FALSE;
+}
+
+/**
+ * Menu title callback function for synonyms settings page.
+ *
+ * @param string $entity_type
+ *   Entity type whose synonyms settings are managed
+ * @param string $bundle
+ *   Bundle whose synonyms settings are managed
+ *
+ * @return string
+ *   Title of the synonyms settings page
+ */
+function synonyms_settings_title($entity_type, $bundle) {
+  $entity_info = entity_get_info($entity_type);
+  $entity_label = isset($entity_info['plural label']) ? $entity_info['plural label'] : $entity_info['label'];
+  if ($entity_type == $bundle) {
+    return t('Synonyms settings of @entity_type', array(
+      '@entity_type' => $entity_label,
+    ));
+  }
+  return t('Synonyms settings of @bundle @entity_type', array(
+    '@bundle' => $entity_info['bundles'][$bundle]['label'],
+    '@entity_type' => $entity_label,
+  ));
+}
+
+/**
+ * Escape string to safely use in autocomplete text field as default value.
+ *
+ * @param string $value
+ *   String to be escaped
+ *
+ * @return string
+ *   Escaped string $value
+ */
+function synonyms_autocomplete_escape($value) {
+  // Commas or quotes must be wrapped in quotes.
+  if (strpos($value, ',') !== FALSE || strpos($value, '"') !== FALSE) {
+    $value = '"' . str_replace('"', '""', $value) . '"';
+  }
+  return $value;
+}
+
+/**
+ * Determine a list of target bundles of an entityreference field.
+ *
+ * @param array $field
+ *   Field definition array. This field must be of type 'entityreference'
+ *
+ * @return array|null
+ *   List of target bundles per the settings of provided field or NULL if the
+ *   provided field does not expose any limitations on target bundles
+ */
+function synonyms_field_target_bundles($field) {
+  $target_bundles = isset($field['settings']['handler_settings']['target_bundles']) ? array_values($field['settings']['handler_settings']['target_bundles']) : array();
+  if (empty($target_bundles)) {
+    $target_bundles = NULL;
+  }
+  return $target_bundles;
 }

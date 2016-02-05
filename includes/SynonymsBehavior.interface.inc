@@ -11,15 +11,6 @@
  * All synonyms behaviors must extend this interface.
  */
 interface SynonymsBehavior {
-}
-
-/**
- * Interface of "synonyms" behavior.
- *
- * The most basic synonyms behavior.
- */
-interface SynonymsSynonymsBehavior extends SynonymsBehavior {
-
   /**
    * Extract synonyms from a field attached to an entity.
    *
@@ -137,9 +128,9 @@ interface SynonymsSynonymsBehavior extends SynonymsBehavior {
 class SynonymsSynonymsBehaviorException extends Exception {}
 
 /**
- * Starting point for implementing SynonymsSynonymsBehavior interface.
+ * Starting point for implementing SynonymsBehavior interface.
  */
-abstract class AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehavior {
+abstract class AbstractSynonymsBehavior implements SynonymsBehavior {
 
   /**
    * Constant which denotes placeholder of a synonym column.
@@ -178,11 +169,11 @@ abstract class AbstractSynonymsSynonymsBehavior implements SynonymsSynonymsBehav
 /**
  * Interface of the autocomplete synonyms behavior.
  */
-interface AutocompleteSynonymsBehavior extends SynonymsSynonymsBehavior {
+interface AutocompleteSynonymsBehavior extends SynonymsBehavior {
 }
 
 /**
  * Interface of the synonyms friendly select behavior.
  */
-interface SelectSynonymsBehavior extends SynonymsSynonymsBehavior {
+interface SelectSynonymsBehavior extends SynonymsBehavior {
 }
