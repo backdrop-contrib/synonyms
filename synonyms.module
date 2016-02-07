@@ -410,6 +410,20 @@ function synonyms_field_widget_error($element, $error, $form, &$form_state) {
 }
 
 /**
+ * Implements hook_features_api().
+ */
+function synonyms_features_api() {
+  return array(
+    'synonyms' => array(
+      'name' => t('Synonyms'),
+      'file' => drupal_get_path('module', 'synonyms') . '/synonyms.features.inc',
+      'default_hook' => 'default_synonyms',
+      'feature_source' => TRUE,
+    ),
+  );
+}
+
+/**
  * Form element validate handler.
  *
  * Handle validation for taxonomy term synonym-friendly autocomplete element.
