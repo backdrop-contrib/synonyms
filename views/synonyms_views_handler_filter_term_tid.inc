@@ -53,11 +53,11 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
       $bundle = $field['bundles'][$field_entity_type][0];
 
       $instance = field_info_instance($field_entity_type, $field['field_name'], $bundle);
-      if ($instance['widget']['type'] == 'synonyms_autocomplete') {
+      if ($instance['widget']['type'] == 'synonyms_autocomplete_taxonomy_term') {
         $widget = $instance['widget']['settings'];
       }
       else {
-        $widget = field_info_widget_settings('synonyms_autocomplete');
+        $widget = field_info_widget_settings('synonyms_autocomplete_taxonomy_term');
       }
       $autocomplete_path = $widget['synonyms_autocomplete_path'];
       $size = $widget['size'];

@@ -1247,14 +1247,18 @@ function synonyms_behavior_settings_save($settings) {
  *   Name of behavior for which settings should be removed
  */
 function synonyms_behavior_settings_delete($instance_id, $behavior) {
+
+
   $behavior_definition = synonyms_behaviors();
   $behavior_definition = $behavior_definition[$behavior];
   $disabled_callback = ctools_plugin_get_function($behavior_definition, 'disabled callback');
   if ($disabled_callback) {
     $instance = synonyms_instance_id_load($instance_id);
-    $behavior_implementation = synonyms_behavior_get($behavior, $instance['entity_type'], $instance['bundle'], FALSE, TRUE);
-    $behavior_implementation = $behavior_implementation[$instance_id];
-    $disabled_callback($behavior_definition, $behavior_implementation, $instance);
+    $behavior_implementation = synonyms_behavior_get($behavior, $instance['entity_type'], $instance['bundle'], TRUE, TRUE);
+    if (isset($behavior_implementation[$instance_id])) {
+      $behavior_implementation = $behavior_implementation[$instance_id];
+      $disabled_callback($behavior_definition, $behavior_implementation, $instance);
+    }
   }
   db_delete('synonyms_settings')
     ->condition('instance_id', $instance_id)
