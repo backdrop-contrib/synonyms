@@ -883,6 +883,7 @@ class EntityReferenceAutocompleteSynonymsWebTestCase extends AbstractAutocomplet
   }
 
   public function setUp($modules = array()) {
+    $modules[] = 'entityreference';
     parent::setUp($modules);
 
     $this->reference_field = array(
@@ -1068,7 +1069,6 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
 
       $element['#options'][$key] = $this->synonymsSelectOptionPrefix($v['entity'], $v['synonym']) . $label;
     }
-    debug(form_select_options($element));
     $this->assertRaw('>' . form_select_options($element) . '</select>', $message, 'Synonyms friendly select');
   }
 
@@ -1485,7 +1485,7 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
 /**
  * Test synonyms friendly select widget for entity reference field type.
  */
-class EntityReferenceSeelectSynonymsWebTestCase extends AbstractSelectSynonymsWebTestCase {
+class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWebTestCase {
 
   public static function getInfo() {
     return array(
@@ -1496,6 +1496,7 @@ class EntityReferenceSeelectSynonymsWebTestCase extends AbstractSelectSynonymsWe
   }
 
   public function setUp($modules = array()) {
+    $modules[] = 'entityreference';
     parent::setUp($modules);
 
     $this->reference_field = array(

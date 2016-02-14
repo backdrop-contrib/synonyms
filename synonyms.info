@@ -5,7 +5,8 @@ core = 7.x
 dependencies[] = taxonomy
 dependencies[] = ctools
 dependencies[] = entity
-dependencies[] = entityreference
+
+test_dependencies[] = entityreference:entityreference
 
 files[] = synonyms.test
 

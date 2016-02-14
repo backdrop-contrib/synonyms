@@ -5,6 +5,9 @@ core = 7.x
 dependencies[] = synonyms
 dependencies[] = search
 
+test_dependencies[] = entityreference:entityreference
+test_dependencies[] = term_search:term_search
+
 files[] = synonyms_search.test
 
 files[] = includes/SearchSynonymsBehavior.interface.inc

@@ -30,7 +30,7 @@ abstract class AbstractSearchSynonymsWebTestCase extends SynonymsWebTestCase {
    * SetUp method.
    */
   public function setUp($modules = array()) {
-    array_unshift($modules, 'synonyms_search_test');
+    array_unshift($modules, 'synonyms_search');
     parent::setUp($modules);
 
     // Create a few terms and synonyms.
@@ -121,8 +121,9 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
    * SetUp method.
    */
   public function setUp($modules = array()) {
+    $modules[] = 'entityreference';
     parent::setUp($modules);
-debug(module_list());
+
     // Creating a test content type.
     $this->drupalPost('admin/structure/types/add', array(
       'name' => 'Synonyms Test Content',
@@ -373,6 +374,7 @@ class TermSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
    * SetUp method.
    */
   public function setUp($modules = array()) {
+    $modules[] = 'term_search';
     parent::setUp($modules);
     $active_searches = variable_get('search_active_modules', array('node', 'user'));
     $active_searches[] = 'term_search';

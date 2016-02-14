@@ -834,8 +834,6 @@ function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type
   $rows = array();
 
   $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
-  if (!$bundle)
-  debug($behavior_implementations);
   foreach ($behavior_implementations as $behavior_implementation) {
     foreach (synonyms_synonyms_find_behavior($condition, $behavior_implementation) as $row) {
       $rows[] = $row;
@@ -1247,8 +1245,6 @@ function synonyms_behavior_settings_save($settings) {
  *   Name of behavior for which settings should be removed
  */
 function synonyms_behavior_settings_delete($instance_id, $behavior) {
-
-
   $behavior_definition = synonyms_behaviors();
   $behavior_definition = $behavior_definition[$behavior];
   $disabled_callback = ctools_plugin_get_function($behavior_definition, 'disabled callback');
