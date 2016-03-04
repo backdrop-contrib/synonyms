@@ -1,9 +1,10 @@
 name = Synonyms Search
 description = "Provides synonyms integration with searching."
-package = Taxonomy
+package = Synonyms
 core = 7.x
 dependencies[] = synonyms
 dependencies[] = search
+dependencies[] = taxonomy
 
 test_dependencies[] = entityreference:entityreference
 test_dependencies[] = term_search:term_search

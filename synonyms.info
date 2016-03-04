@@ -1,8 +1,7 @@
 name = Synonyms
 description = "Provides synonyms feature for working with Drupal Taxonomy"
-package = Taxonomy
+package = Synonyms
 core = 7.x
-dependencies[] = taxonomy
 dependencies[] = ctools
 dependencies[] = entity
 
