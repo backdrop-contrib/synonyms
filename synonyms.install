@@ -194,6 +194,8 @@ function synonyms_update_7102() {
  *
  * Namely, the following happens:
  * - general "synonyms" behavior gets removed as too ambiguous.
+ * - "select" and "autocomplete" behaviors undergo change in settings ("@term"
+ *   placeholder is replaced with "@entity" one)
  * - taxonomy term reference widgets get renamed to their new names.
  */
 function synonyms_update_7103() {
@@ -206,6 +208,14 @@ function synonyms_update_7103() {
     synonyms_behavior_settings_delete($behavior_implementation['instance_id'], $behavior_implementation['behavior']);
   }
   $removed_behaviors = implode(', ', $removed_behaviors);
+
+  $alter_behaviors = array('select', 'autocomplete');
+  foreach ($alter_behaviors as $behavior) {
+    foreach (synonyms_behavior_get($behavior, NULL, NULL, TRUE) as $behavior_implementation) {
+      $behavior_implementation['settings']['wording'] = str_replace('@term', '@entity', $behavior_implementation['settings']['wording']);
+      synonyms_behavior_settings_save($behavior_implementation);
+    }
+  }
 
   // Keys are the old widget names, whereas corresponding values are the new
   // widget names.
