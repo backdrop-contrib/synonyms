@@ -200,7 +200,14 @@ function synonyms_update_7102() {
  */
 function synonyms_update_7103() {
   $removed_behaviors = array();
-  foreach (synonyms_behavior_get('synonyms', NULL, NULL, TRUE) as $behavior_implementation) {
+  $synonyms_behaviors = db_select('synonyms_settings', 's');
+  $synonyms_behaviors
+    ->fields('s')
+    ->condition('s.behavior', 'synonyms');
+  $instance_alias = $synonyms_behaviors->innerJoin('field_instance', 'i', '%alias.instance_id = s.instance_id');
+  $synonyms_behaviors->fields($instance_alias, array('bundle', 'entity_type', 'field_name'));
+  $synonyms_behaviors = synonyms_behavior_settings_unpack($synonyms_behaviors->execute()->fetchAllAssoc('instance_id'));
+  foreach ($synonyms_behaviors as $behavior_implementation) {
     $removed_behaviors[] = t('@bundle @entity_type', array(
       '@bundle' => $behavior_implementation['bundle'],
       '@entity_type' => $behavior_implementation['entity_type'],
