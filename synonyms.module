@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Provide synonyms feature for Drupal Taxonomy.
+ * Provide synonyms feature for Drupal entities.
  */
 
 /**
@@ -820,7 +820,7 @@ function synonyms_extract_synonyms($entity, $behavior_implementation) {
  *   Among synonyms of what entity type to search
  * @param string|array $bundle
  *   Optionally specifcy among synonyms of what bundle(-s) to search. You can
- *   specify here a string - bundle name to search within or an array of nundles
+ *   specify here a string - bundle name to search within or an array of bundles
  *   within which to search
  *
  * @return array
@@ -1274,7 +1274,7 @@ function synonyms_behavior_settings_delete($instance_id, $behavior) {
  *   Instance definition array
  */
 function synonyms_instance_id_load($instance_id, $reset = FALSE) {
-  $cache = &drupal_static(__FILE__, array(), $reset);
+  $cache = &drupal_static(__FUNCTION__, array(), $reset);
 
   if (!isset($cache[$instance_id])) {
     $cache[$instance_id] = db_select('field_config_instance', 'i')

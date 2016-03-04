@@ -402,6 +402,9 @@ function theme_synonyms_behaviors_settings($variables) {
   return '<div id="' . $element['#id'] . '">' . theme('table', $table) . drupal_render_children($element) . '</div>';
 }
 
+/**
+ * Page menu callback for managing Synonyms settings of entity types.
+ */
 function synonyms_settings_overview() {
   $output = array();
 
