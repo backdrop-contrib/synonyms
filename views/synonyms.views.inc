@@ -6,6 +6,34 @@
  */
 
 /**
+ * Implements hook_views_data().
+ */
+function synonyms_views_data() {
+  $data = array();
+
+  foreach (entity_get_info() as $entity_type => $entity_info) {
+    $wrapper = entity_metadata_wrapper($entity_type);
+    $property_info = $wrapper->getPropertyInfo();
+    if (isset($property_info['synonyms']) && isset($entity_info['base table']) && $entity_info['base table']) {
+      $data[$entity_info['base table']]['synonyms'] = array(
+        'title' => t('Synonyms'),
+        'help' => t('Synonyms of @entity_type', array(
+          '@entity_type' => $entity_info['label'],
+        )),
+        'field' => array(
+          'handler' => 'synonyms_handler_field_synonyms',
+          'real field' => $entity_info['entity keys']['id'],
+          'click sortable' => FALSE,
+          'synonyms entity type' => $entity_type,
+        ),
+      );
+    }
+  }
+
+  return $data;
+}
+
+/**
  * Implements hook_views_plugins_alter().
  */
 function synonyms_views_plugins_alter(&$plugins) {
