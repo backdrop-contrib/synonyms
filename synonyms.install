@@ -199,22 +199,9 @@ function synonyms_update_7102() {
  * - taxonomy term reference widgets get renamed to their new names.
  */
 function synonyms_update_7103() {
-  $removed_behaviors = array();
-  $synonyms_behaviors = db_select('synonyms_settings', 's');
-  $synonyms_behaviors
-    ->fields('s')
-    ->condition('s.behavior', 'synonyms');
-  $instance_alias = $synonyms_behaviors->innerJoin('field_config_instance', 'i', '%alias.id = s.instance_id');
-  $synonyms_behaviors->fields($instance_alias, array('bundle', 'entity_type', 'field_name'));
-  $synonyms_behaviors = synonyms_behavior_settings_unpack($synonyms_behaviors->execute()->fetchAllAssoc('instance_id', PDO::FETCH_ASSOC));
-  foreach ($synonyms_behaviors as $behavior_implementation) {
-    $removed_behaviors[] = t('@bundle @entity_type', array(
-      '@bundle' => $behavior_implementation['bundle'],
-      '@entity_type' => $behavior_implementation['entity_type'],
-    ));
-    synonyms_behavior_settings_delete($behavior_implementation['instance_id'], $behavior_implementation['behavior']);
-  }
-  $removed_behaviors = implode(', ', $removed_behaviors);
+  db_delete('synonyms_settings')
+    ->condition('behavior', 'synonyms')
+    ->execute();
 
   $alter_behaviors = array('select', 'autocomplete');
   foreach ($alter_behaviors as $behavior) {
@@ -237,16 +224,15 @@ function synonyms_update_7103() {
           $instance = field_read_instance($entity_type, $field_name, $bundle);
           if (in_array($instance['widget']['type'], array_keys($migrate_map))) {
             $instance['widget']['type'] = $migrate_map[$instance['widget']['type']];
+
+            if ($instance['widget']['type'] == 'synonyms_autocomplete_taxonomy_term' && $instance['widget']['settings']['synonyms_autocomplete_path'] == 'synonyms/autocomplete') {
+              $instance['widget']['settings']['synonyms_autocomplete_path'] = 'synonyms/autocomplete-taxonomy-term';
+            }
+
             field_update_instance($instance);
           }
         }
       }
     }
-  }
-
-  if ($removed_behaviors) {
-    return t('Removed general "synonyms" behavior for %removed.', array(
-      '%removed' => $removed_behaviors,
-    ));
   }
 }
