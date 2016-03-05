@@ -204,9 +204,9 @@ function synonyms_update_7103() {
   $synonyms_behaviors
     ->fields('s')
     ->condition('s.behavior', 'synonyms');
-  $instance_alias = $synonyms_behaviors->innerJoin('field_instance', 'i', '%alias.instance_id = s.instance_id');
+  $instance_alias = $synonyms_behaviors->innerJoin('field_config_instance', 'i', '%alias.id = s.instance_id');
   $synonyms_behaviors->fields($instance_alias, array('bundle', 'entity_type', 'field_name'));
-  $synonyms_behaviors = synonyms_behavior_settings_unpack($synonyms_behaviors->execute()->fetchAllAssoc('instance_id'));
+  $synonyms_behaviors = synonyms_behavior_settings_unpack($synonyms_behaviors->execute()->fetchAllAssoc('instance_id', PDO::FETCH_ASSOC));
   foreach ($synonyms_behaviors as $behavior_implementation) {
     $removed_behaviors[] = t('@bundle @entity_type', array(
       '@bundle' => $behavior_implementation['bundle'],
@@ -234,7 +234,7 @@ function synonyms_update_7103() {
     if ($field_info['type'] == 'taxonomy_term_reference') {
       foreach ($field_info['bundles'] as $entity_type => $bundles) {
         foreach ($bundles as $bundle) {
-          $instance = field_info_instance($entity_type, $field_name, $bundle);
+          $instance = field_read_instance($entity_type, $field_name, $bundle);
           if (in_array($instance['widget']['type'], array_keys($migrate_map))) {
             $instance['widget']['type'] = $migrate_map[$instance['widget']['type']];
             field_update_instance($instance);
