@@ -16,12 +16,12 @@ function synonyms_views_data() {
     $property_info = $wrapper->getPropertyInfo();
     if (isset($property_info['synonyms']) && isset($entity_info['base table']) && $entity_info['base table']) {
       $data[$entity_info['base table']]['synonyms'] = array(
-        'title' => t('Synonyms'),
-        'help' => t('Synonyms of @entity_type', array(
+        'title' => t('All synonyms'),
+        'help' => t('All synonyms of @entity_type', array(
           '@entity_type' => $entity_info['label'],
         )),
         'field' => array(
-          'handler' => 'synonyms_handler_field_synonyms',
+          'handler' => 'synonyms_views_handler_field_synonyms',
           'real field' => $entity_info['entity keys']['id'],
           'click sortable' => FALSE,
           'synonyms entity type' => $entity_type,

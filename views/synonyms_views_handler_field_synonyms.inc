@@ -8,7 +8,7 @@
 /**
  * Views field handler for displaying synonyms of an entity.
  */
-class synonyms_handler_field_synonyms extends views_handler_field {
+class synonyms_views_handler_field_synonyms extends views_handler_field {
 
   function option_definition() {
     $options = parent::option_definition();
