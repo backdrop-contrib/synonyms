@@ -404,7 +404,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
         '#multiple' => $multiple,
         '#options' => $options,
         '#default_value' => $default_value,
-        '#element_validate' => array('synonyms_select_form_to_storage'),
+        '#element_validate' => array('synonyms_select_validate', 'synonyms_select_form_to_storage'),
         '#empty_option' => t('- None -'),
       );
       break;
@@ -447,7 +447,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
         '#multiple' => $multiple,
         '#options' => $synonyms_options,
         '#default_value' => $default_value,
-        '#element_validate' => array('synonyms_select_form_to_storage'),
+        '#element_validate' => array('synonyms_select_validate', 'synonyms_select_form_to_storage'),
         '#empty_option' => t('- None -'),
       );
       break;
@@ -1313,6 +1313,21 @@ function synonyms_instance_id_load($instance_id, $reset = FALSE) {
  * expected by Field module.
  */
 function synonyms_select_form_to_storage($element, &$form_state) {
+  $form_state_value = array();
+  foreach (drupal_array_get_nested_value($form_state['values'], $element['#array_parents']) as $entity_id) {
+    $form_state_value[] = array($element['#columns'][0] => $entity_id);
+  }
+
+  form_set_value($element, $form_state_value, $form_state);
+}
+
+/**
+ * Element validate handler.
+ *
+ * Convert selected synonyms into their terms and save the updated data in the
+ * value of the form element.
+ */
+function synonyms_select_validate($element, &$form_state) {
   $value = array();
   if ($element['#multiple']) {
     $value = $element['#value'];
@@ -1326,8 +1341,8 @@ function synonyms_select_form_to_storage($element, &$form_state) {
     // process the selected values stripping everything that goes after
     // semicolon.
     if (!is_numeric($v)) {
-      $id = explode(':', $v);
-      $value[$k] = $id[0];
+      $entity_id = explode(':', $v);
+      $value[$k] = $entity_id[0];
     }
   }
 
@@ -1337,12 +1352,7 @@ function synonyms_select_form_to_storage($element, &$form_state) {
   // scenario.
   $value = array_unique($value);
 
-  $form_state_value = array();
-  foreach ($value as $id) {
-    $form_state_value[] = array($element['#columns'][0] => $id);
-  }
-
-  form_set_value($element, $form_state_value, $form_state);
+  form_set_value($element, $value, $form_state);
 }
 
 /**

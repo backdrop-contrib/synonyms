@@ -49,7 +49,7 @@ function synonyms_views_plugins_alter(&$plugins) {
  */
 function synonyms_field_views_data_alter(&$result, $field, $module) {
   if ($field['type'] == 'taxonomy_term_reference') {
-    // Add synonyms friendly autocomplete filter.
+    // Add synonyms friendly filters.
     foreach ($field['storage']['details']['sql'] as $table) {
       $tid_column = reset($table);
       $tid_column = $tid_column['tid'];
