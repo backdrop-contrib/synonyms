@@ -47,7 +47,7 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
   /**
    * Test synonyms extraction for 'commerce_product_reference' field type.
    */
-  public function testEntityReference() {
+  public function testCommerceProductReference() {
     // Testing synonymsExtract().
     $this->assertSynonymsExtract(array(), array(), 'on empty field.');
 
