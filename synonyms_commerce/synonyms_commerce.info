@@ -1,0 +1,13 @@
+name = Synonyms Commerce
+description = "Provides synonyms integration with Commerce."
+package = Synonyms
+core = 7.x
+dependencies[] = synonyms
+dependencies[] = commerce_product_reference
+
+test_dependencies[] = commerce:commerce_product_ui
+
+files[] = synonyms_commerce.test
+
+files[] = includes/CommerceProductReferenceSynonymsBehavior.class.inc
+files[] = includes/SearchCommerceProductReferenceSynonymsBehavior.class.inc
