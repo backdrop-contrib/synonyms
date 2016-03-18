@@ -32,7 +32,8 @@ class EntityReferenceSynonymsBehavior extends AbstractSynonymsBehavior implement
     if ($expected_synonym_entity_type != $synonym_entity_type) {
       return array();
     }
-    $synonym_entity_id = entity_id($synonym_entity_type, $synonym_entity);
+    $synonym_entity_id = entity_extract_ids($synonym_entity_type, $synonym_entity);
+    $synonym_entity_id = $synonym_entity_id[0];
     return array(array(
       'target_id' => $synonym_entity_id,
     ));
