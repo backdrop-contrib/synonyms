@@ -734,8 +734,12 @@ function synonyms_get_raw($entity, array $options, $name, $entity_type, &$contex
   $bundle = $bundle[2];
 
   $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
+  $instance_ids = array();
   foreach ($behavior_implementations as $implementation) {
-    $synonyms = array_merge($synonyms, synonyms_extract_synonyms($entity, $implementation));
+    if (!in_array($implementation['instance_id'], $instance_ids)) {
+      $synonyms = array_merge($synonyms, synonyms_extract_synonyms($entity, $implementation));
+      $instance_ids[] = $implementation['instance_id'];
+    }
   }
   return $synonyms;
 }

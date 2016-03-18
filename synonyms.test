@@ -234,6 +234,15 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     );
     taxonomy_term_save($term);
 
+    // We enable the same field in another synonym behavior too and test that we
+    // only get unique synonyms, i.e. synonyms do not get doubled for being
+    // sourced from the same field twice (once per each behavior).
+    synonyms_behavior_settings_save(array(
+      'instance_id' => $this->fields['enabled']['instance']['id'],
+      'behavior' => 'select',
+      'settings' => '@synonym',
+    ));
+
     // Testing the 'synonyms' property of 'taxonomy_term' entity.
     $synonyms = entity_metadata_wrapper('taxonomy_term', $no_synonyms_term)->synonyms->value();
     $this->assertTrue(empty($synonyms), 'Successfully retrieved synonyms_get_sanitized() for a term without synonyms.');
@@ -241,6 +250,8 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $this->assertTrue(count($synonyms) == 1 && $synonyms[0] == $synonym1, 'Successfully retrieved synonyms_get_sanitized() for a term with a single synonym.');
     $synonyms = entity_metadata_wrapper('taxonomy_term', $two_synonyms_term)->synonyms->value();
     $this->assertTrue(count($synonyms) == 2 && $synonyms[0] == $synonym1 && $synonyms[1] == $synonym2, 'Successfully retrieved synonyms_get_sanitized() for a term with 2 synonyms.');
+
+    synonyms_behavior_settings_delete($this->fields['enabled']['instance']['id'], 'select');
 
     // Testing the function synonyms_get_term_by_synonym().
     $tid = synonyms_get_term_by_synonym(drupal_strtoupper($synonym), $this->vocabulary, $term_parent->tid);
