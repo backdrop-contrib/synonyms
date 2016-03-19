@@ -829,7 +829,9 @@ function synonyms_extract_synonyms($entity, $behavior_implementation) {
  *   case insensitive and replacing all spaces in original synonym string by a
  *   dash sign, then you would have to create the following condition object:
  *   db_and()
- *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
+ *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE :synonym", array(
+ *       ':synonym' => '%' . db_like($some-var) . '%'
+ *     ))
  *   And then just supply this object as an input parameter to this function
  * @param string $entity_type
  *   Among synonyms of what entity type to search
@@ -879,7 +881,9 @@ function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type
  *   case insensitive and replacing all spaces in original synonym string by a
  *   dash sign, then you would have to create the following condition object:
  *   db_and()
- *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE 'synonym-come-here%'")
+ *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE :synonym", array(
+ *       ':synonym' => '%' . db_like($some-var) . '%'
+ *     ))
  *   And then just supply this object as an input parameter to this function
  * @param array $behavior_implementation
  *   Fully loaded behavior implementation. Supply here one of the values from
