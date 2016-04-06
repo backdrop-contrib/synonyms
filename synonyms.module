@@ -1314,7 +1314,7 @@ function synonyms_instance_id_load($instance_id, $reset = FALSE) {
  */
 function synonyms_select_form_to_storage($element, &$form_state) {
   $form_state_value = array();
-  foreach (drupal_array_get_nested_value($form_state['values'], $element['#array_parents']) as $entity_id) {
+  foreach (drupal_array_get_nested_value($form_state['values'], $element['#parents']) as $entity_id) {
     $form_state_value[] = array($element['#columns'][0] => $entity_id);
   }
 
