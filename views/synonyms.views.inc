@@ -48,16 +48,30 @@ function synonyms_views_plugins_alter(&$plugins) {
  * Implements hook_field_views_data_alter().
  */
 function synonyms_field_views_data_alter(&$result, $field, $module) {
-  if ($field['type'] == 'taxonomy_term_reference') {
-    // Add synonyms friendly filters.
-    foreach ($field['storage']['details']['sql'] as $table) {
-      $tid_column = reset($table);
-      $tid_column = $tid_column['tid'];
-      $table = array_keys($table);
-      $table = $table[0];
-      if (isset($result[$table][$tid_column]['filter'])) {
-        $result[$table][$tid_column]['filter']['handler'] = 'synonyms_views_handler_filter_term_tid';
+  switch ($field['type']) {
+    case 'taxonomy_term_reference':
+      // Add synonyms friendly filters.
+      foreach ($field['storage']['details']['sql'] as $table) {
+        $tid_column = reset($table);
+        $tid_column = $tid_column['tid'];
+        $table = array_keys($table);
+        $table = $table[0];
+        if (isset($result[$table][$tid_column]['filter'])) {
+          $result[$table][$tid_column]['filter']['handler'] = 'synonyms_views_handler_filter_term_tid';
+        }
       }
-    }
+      break;
+
+    case 'entityreference':
+      foreach ($field['storage']['details']['sql'] as $table) {
+        $target_id_column = reset($table);
+        $target_id_column = $target_id_column['target_id'];
+        $table = array_keys($table);
+        $table = $table[0];
+        if (isset($result[$table][$target_id_column]['filter'])) {
+          $result[$table][$target_id_column]['filter']['handler'] = 'synonyms_views_handler_filter_entityreference_synonyms';
+        }
+      }
+      break;
   }
 }

@@ -18,3 +18,4 @@ files[] = views/synonyms.views.inc
 files[] = views/synonyms_views_plugin_argument_validate_taxonomy_term.inc
 files[] = views/synonyms_views_handler_filter_term_tid.inc
 files[] = views/synonyms_views_handler_field_synonyms.inc
+files[] = views/synonyms_views_handler_filter_entityreference_synonyms.inc

@@ -412,40 +412,10 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
     case 'synonyms_select_entity':
       $multiple = $field['cardinality'] > 1 || $field['cardinality'] == FIELD_CARDINALITY_UNLIMITED;
 
-      $options = entityreference_get_selection_handler($field, $instance, $instance['entity_type'], $element['#entity'])->getReferencableEntities();
-      $synonyms_options = array();
-
-      $target_entity_info = entity_get_info($field['settings']['target_type']);
-      $entity_ids = array();
-      foreach ($options as $bundle_entity_ids) {
-        $entity_ids = array_merge($entity_ids, array_keys($bundle_entity_ids));
-      }
-      $entities = entity_load($field['settings']['target_type'], $entity_ids);
-      foreach ($options as $bundle => $bundle_entity_ids) {
-        $synonyms_options[$target_entity_info['bundles'][$bundle]['label']] = array();
-
-        $behavior_implementations = synonyms_behavior_get('select', $field['settings']['target_type'], $bundle, TRUE);
-
-        foreach ($bundle_entity_ids as $entity_id => $v) {
-          $entity = $entities[$entity_id];
-          $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type']);
-          foreach ($behavior_implementations as $behavior_implementation) {
-            foreach (synonyms_extract_synonyms($entity, $behavior_implementation) as $synonym) {
-              $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type'], $synonym, $behavior_implementation);
-            }
-          }
-        }
-        usort($synonyms_options[$target_entity_info['bundles'][$bundle]['label']], 'synonyms_select_sort_name');
-      }
-
-      if (count($synonyms_options) == 1) {
-        $synonyms_options = reset($synonyms_options);
-      }
-
       $element += array(
         '#type' => 'select',
         '#multiple' => $multiple,
-        '#options' => $synonyms_options,
+        '#options' => synonyms_select_entity_options($field, $instance, $element['#entity']),
         '#default_value' => $default_value,
         '#element_validate' => array('synonyms_select_validate', 'synonyms_select_form_to_storage'),
         '#empty_option' => t('- None -'),
@@ -1429,6 +1399,56 @@ function synonyms_select_option_entity($entity, $entity_type, $synonym = NULL, $
   return (object) array(
     'option' => array($key => $wording),
   );
+}
+
+/**
+ * Construct options array for entity reference synonyms friendly select list.
+ *
+ * @param array $field
+ *   Field definition array of entityreference type for which to construct the
+ *   options
+ * @param array $instance
+ *   Field instance definition array that corresponds to $field
+ * @param object $entity
+ *   If entity is known for which the options should be generated, provide it
+ *   here. It is safe to omit this parameter. Frankly, I do not understand well
+ *   why or how it is used. It is just directly passed into entityreference
+ *   selection handler class
+ *
+ * @return array
+ *   Options array that can be plugged in directly into any #select form element
+ */
+function synonyms_select_entity_options($field, $instance, $entity = NULL) {
+  $options = entityreference_get_selection_handler($field, $instance, $instance['entity_type'], $entity)->getReferencableEntities();
+  $synonyms_options = array();
+
+  $target_entity_info = entity_get_info($field['settings']['target_type']);
+  $entity_ids = array();
+  foreach ($options as $bundle_entity_ids) {
+    $entity_ids = array_merge($entity_ids, array_keys($bundle_entity_ids));
+  }
+  $entities = entity_load($field['settings']['target_type'], $entity_ids);
+  foreach ($options as $bundle => $bundle_entity_ids) {
+    $synonyms_options[$target_entity_info['bundles'][$bundle]['label']] = array();
+
+    $behavior_implementations = synonyms_behavior_get('select', $field['settings']['target_type'], $bundle, TRUE);
+
+    foreach ($bundle_entity_ids as $entity_id => $v) {
+      $entity = $entities[$entity_id];
+      $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type']);
+      foreach ($behavior_implementations as $behavior_implementation) {
+        foreach (synonyms_extract_synonyms($entity, $behavior_implementation) as $synonym) {
+          $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type'], $synonym, $behavior_implementation);
+        }
+      }
+    }
+    usort($synonyms_options[$target_entity_info['bundles'][$bundle]['label']], 'synonyms_select_sort_name');
+  }
+
+  if (count($synonyms_options) == 1) {
+    $synonyms_options = reset($synonyms_options);
+  }
+  return $synonyms_options;
 }
 
 /**
