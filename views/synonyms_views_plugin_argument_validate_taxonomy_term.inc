@@ -57,7 +57,7 @@ class synonyms_views_plugin_argument_validate_taxonomy_term extends views_plugin
         if (empty($vocabularies)) {
           // At this point we want to convert an empty $vocabularies (implicitly
           // meaning "all") into actually a list of all vocabularies.
-          $bundles = array_keys(taxonomy_vocabulary_get_names());
+          $bundles = synonyms_bundle_normalize('taxonomy_term', $vocabularies);
         }
 
         foreach ($bundles as $bundle) {

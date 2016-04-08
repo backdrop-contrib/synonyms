@@ -19,10 +19,10 @@ $plugin = array(
  * Trigger re-indexing of all the nodes that reference terms from the vocabulary
  * where the change has taken place.
  */
-function synonyms_search_behavior_search_enabled($behavior_definition, $settings, $instance) {
-  if ($instance['entity_type'] == 'taxonomy_term') {
+function synonyms_search_behavior_search_enabled($behavior_definition, $behavior_implementation) {
+  if ($behavior_implementation['entity_type'] == 'taxonomy_term') {
     module_load_include('inc', 'synonyms_search', 'synonyms_search.pages');
-    synonyms_search_reindex_nodes_by_vocabulary(taxonomy_vocabulary_machine_name_load($instance['bundle']));
+    synonyms_search_reindex_nodes_by_vocabulary(taxonomy_vocabulary_machine_name_load($behavior_implementation['bundle']));
   }
 }
 
@@ -32,9 +32,9 @@ function synonyms_search_behavior_search_enabled($behavior_definition, $settings
  * Trigger re-indexing of all the nodes that reference terms from the vocabulary
  * where the change has taken place.
  */
-function synonyms_search_behavior_search_disabled($behavior_definition, $behavior_implementation, $instance) {
-  if ($instance['entity_type'] == 'taxonomy_term') {
+function synonyms_search_behavior_search_disabled($behavior_definition, $behavior_implementation) {
+  if ($behavior_implementation['entity_type'] == 'taxonomy_term') {
     module_load_include('inc', 'synonyms_search', 'synonyms_search.pages');
-    synonyms_search_reindex_nodes_by_vocabulary(taxonomy_vocabulary_machine_name_load($instance['bundle']));
+    synonyms_search_reindex_nodes_by_vocabulary(taxonomy_vocabulary_machine_name_load($behavior_implementation['bundle']));
   }
 }

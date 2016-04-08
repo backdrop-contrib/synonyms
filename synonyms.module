@@ -145,40 +145,6 @@ function synonyms_entity_property_info() {
 }
 
 /**
- * Implements hook_field_delete_instance().
- */
-function synonyms_field_delete_instance($instance) {
-  // Remove, if necessary, any synonyms behaviors enabled on this instance.
-  $result = db_select('synonyms_settings', 's')
-    ->fields('s', array('behavior'))
-    ->condition('s.instance_id', $instance['id'])
-    ->execute();
-  foreach ($result as $row) {
-    synonyms_behavior_settings_delete($instance['id'], $row->behavior);
-  }
-}
-
-/**
- * Implements hook_synonyms_behavior_implementation_info().
- */
-function synonyms_synonyms_behavior_implementation_info($behavior) {
-  switch ($behavior) {
-    case 'autocomplete':
-    case 'select':
-      return array(
-        'number_integer' => 'TextSynonymsBehavior',
-        'number_decimal' => 'TextSynonymsBehavior',
-        'number_float' => 'TextSynonymsBehavior',
-        'text' => 'TextSynonymsBehavior',
-        'taxonomy_term_reference' => 'TaxonomySynonymsBehavior',
-        'entityreference' => 'EntityReferenceSynonymsBehavior',
-      );
-      break;
-  }
-  return array();
-}
-
-/**
  * Implements hook_form_FORM_ID_alter().
  */
 function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
@@ -383,7 +349,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
                 foreach ($terms as $term) {
                   $options[] = synonyms_select_option_entity($term, 'taxonomy_term', NULL, NULL, array('depth'));
                   foreach ($behavior_implementations as $implementation) {
-                    foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
+                    foreach ($implementation['object']->extractSynonyms($term) as $synonym) {
                       $options[] = synonyms_select_option_entity($term, 'taxonomy_term', $synonym, $implementation, array('depth'));
                     }
                   }
@@ -468,7 +434,7 @@ function synonyms_autocomplete_taxonomy_term_validate($element, &$form_state) {
       foreach ($field['settings']['allowed_values'] as $tree) {
         $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $tree['vocabulary'], TRUE);
         foreach ($behavior_implementations as $behavior_implementation) {
-          $synonyms = synonyms_synonyms_find_behavior(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term['name']), $behavior_implementation);
+          $synonyms = $behavior_implementation['object']->synonymsFind(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term['name']));
           foreach ($synonyms as $synonym) {
             $synonym_tid = $synonym->entity_id;
             break(2);
@@ -519,7 +485,7 @@ function synonyms_autocomplete_entity_validate($element, &$form_state) {
       foreach ($behavior_implementations as $implementation) {
         $condition = db_and();
         $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $input, 'IN');
-        foreach (synonyms_synonyms_find_behavior($condition, $implementation) as $synonym) {
+        foreach ($implementation['object']->synonymsFind($condition) as $synonym) {
           unset($input[drupal_strtolower($synonym->synonym)]);
           $value[] = $synonym->entity_id;
         }
@@ -704,11 +670,11 @@ function synonyms_get_raw($entity, array $options, $name, $entity_type, &$contex
   $bundle = $bundle[2];
 
   $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
-  $instance_ids = array();
+  $providers = array();
   foreach ($behavior_implementations as $implementation) {
-    if (!in_array($implementation['instance_id'], $instance_ids)) {
-      $synonyms = array_merge($synonyms, synonyms_extract_synonyms($entity, $implementation));
-      $instance_ids[] = $implementation['instance_id'];
+    if (!in_array($implementation['provider'], $providers)) {
+      $synonyms = array_merge($synonyms, $implementation['object']->extractSynonyms($entity));
+      $providers[] = $implementation['provider'];
     }
   }
   return $synonyms;
@@ -742,7 +708,7 @@ function synonyms_get_term_synonyms($term) {
 
   $behavior_implementations = synonyms_behavior_get_all_enabled('taxonomy_term', $bundle);
   foreach ($behavior_implementations as $implementation) {
-    foreach  (synonyms_extract_synonyms($term, $implementation) as $synonym) {
+    foreach  ($implementation['object']->extractSynonyms($term) as $synonym) {
       $synonyms[] = array(
         'value' => $synonym,
         'safe_value' => check_plain($synonym),
@@ -750,40 +716,6 @@ function synonyms_get_term_synonyms($term) {
     }
   }
 
-  return $synonyms;
-}
-
-/**
- * Extract synonyms of an entity within a certain field and behavior.
- *
- * Do not use this function, if you want to get synonyms of an entity, unless
- * you know what you are doing. This function extracts the synonyms only from a
- * specific field. If you simply want "get me all the synonyms of this entity"
- * kind of function, use synonyms_get_sanitized() and/or
- * synonyms_get_sanitized().
- *
- * @param object $entity
- *   Fully loaded entity, synonyms from which should be extracted
- * @param array  $behavior_implementation
- *   Fully loaded behavior implementation. Supply here one of the values from
- *   the return of synonyms_behavior_get() function
- *
- * @return array
- *   Array of synonyms that reside in the field dictated by
- *   $behavior_implementation parameter
- */
-function synonyms_extract_synonyms($entity, $behavior_implementation) {
-  $synonyms = array();
-  $field = field_info_field($behavior_implementation['field_name']);
-  $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
-  $items = field_get_items($behavior_implementation['entity_type'], $entity, $field['field_name']);
-
-  if (is_array($items) && !empty($items)) {
-    $object = synonyms_behavior_implementation_class($behavior_implementation['behavior'], $field);
-    $object = new $object();
-
-    $synonyms = array_merge($synonyms, $object->extractSynonyms($items, $field, $instance, $entity, $behavior_implementation['entity_type']));
-  }
   return $synonyms;
 }
 
@@ -822,59 +754,12 @@ function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type
 
   $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
   foreach ($behavior_implementations as $behavior_implementation) {
-    foreach (synonyms_synonyms_find_behavior($condition, $behavior_implementation) as $row) {
+    foreach ($behavior_implementation['object']->synonymsFind($condition) as $row) {
       $rows[] = $row;
     }
   }
 
   return $rows;
-}
-
-/**
- * Find entities with a provided synonym within certain behavior implementation.
- *
- * Do not use this function, if you want to find entities that have specific
- * synonyms, unless you know what you are doing. This function searches for the
- * entities with synonyms from a specific field. If you want to search for a
- * synonym among all the synonyms of an entity, use synonyms_synonyms_find().
- *
- * You have full SQL flexibility to specify parameters of how to search for
- * synonyms. You can create arbitrary set of SQL conditions that will be plugged
- * into specific SELECT queries by behavior implementations.
- *
- * @param QueryConditionInterface $condition
- *   Object of QueryConditionInterface that specifies conditions by which you
- *   want to find synonyms. When building this condition object, use
- *   AbstractSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for real
- *   column name that contains synonym as text. For example, if you were to find
- *   all entities with synonyms that begin with "synonym-come-here" substring,
- *   case insensitive and replacing all spaces in original synonym string by a
- *   dash sign, then you would have to create the following condition object:
- *   db_and()
- *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE :synonym", array(
- *       ':synonym' => '%' . db_like($some-var) . '%'
- *     ))
- *   And then just supply this object as an input parameter to this function
- * @param array $behavior_implementation
- *   Fully loaded behavior implementation. Supply here one of the values from
- *   the return of synonyms_behavior_get() function
- *
- * @return Traversable
- *   Traversable result set of found synonyms and entity IDs to which those
- *   belong. Each element in the result set will be an object and will have the
- *   following structure:
- *   - synonym: (string) Synonym that was found and which satisfies the
- *     $condition you specified
- *   - entity_id: (int) ID of the entity to which the found synonym belongs
- */
-function synonyms_synonyms_find_behavior(QueryConditionInterface $condition, $behavior_implementation) {
-  $field = field_info_field($behavior_implementation['field_name']);
-  $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
-
-  $object = synonyms_behavior_implementation_class($behavior_implementation['behavior'], $field);
-  $object = new $object();
-
-  return $object->synonymsFind($condition, $field, $instance);
 }
 
 /**
@@ -901,50 +786,24 @@ function synonyms_synonyms_find_behavior(QueryConditionInterface $condition, $be
  *
  * @return bool
  *   Whether synonym has been successfully added
+ *
+ * TODO: This should be shifted into Term Merge module.
  */
 function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $field, $synonym_entity, $synonym_entity_type) {
   $bundle = entity_extract_ids($trunk_entity_type, $trunk_entity);
   $bundle = $bundle[2];
-  $behavior_implementations = synonyms_behavior_get_all_enabled($trunk_entity_type, $bundle, $field);
+  // TODO: this somehow must be incorporated into synonyms_provider_field
+  // submodule.
+  $behavior_implementations = synonyms_behavior_get_all_enabled($trunk_entity_type, $bundle, synonyms_provider_field_provider_name(field_info_field($field)));
 
-  $field = field_info_field($field);
-  $instance = field_info_instance($trunk_entity_type, $field['field_name'], $bundle);
   if (empty($behavior_implementations)) {
     // $field either doesn't exist in the $trunk_entity or it does not have any
     // enabled behavior.
     return FALSE;
   }
 
-  $items = field_get_items($trunk_entity_type, $trunk_entity, $field['field_name']);
-  $items = is_array($items) ? $items : array();
-
   $behavior_implementation = reset($behavior_implementations);
-  $object = synonyms_behavior_implementation_class($behavior_implementation['behavior'], $field);
-  $object = new $object();
-  $extra_items = $object->mergeEntityAsSynonym($items, $field, $instance, $synonym_entity, $synonym_entity_type);
-
-  if (empty($extra_items)) {
-    // For some reason the behavior implementation couldn't merge it. Otherwise
-    // it would have not returned an empty array.
-    return FALSE;
-  }
-
-  // Merging extracted synonym items into the values of the field that already
-  // exist.
-  // @todo: Currently we hardcode to LANGUAGE_NONE, but in future it would be
-  // nice to have multilanguage support.
-  $items = array_merge($items, $extra_items);
-
-  // Now we want to keep only unique values of the $items. Since we know nothing
-  // about what determines uniqueness of an item, we will ask the synonym
-  // behavior to hash each of them and then will compare hashes.
-  $unique_items = array();
-  foreach ($items as $item) {
-    $unique_items[$object->synonymItemHash($item, $field, $instance)] = $item;
-  }
-  $items = array_values($unique_items);
-
-  $trunk_entity->{$field['field_name']}[LANGUAGE_NONE] = $items;
+  $behavior_implementation['object']->mergeEntityAsSynonym($trunk_entity, $synonym_entity, $synonym_entity_type);
 
   entity_save($trunk_entity_type, $trunk_entity);
   return TRUE;
@@ -968,6 +827,8 @@ function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $fiel
  * @deprecated
  */
 function synonyms_synonyms_fields($vocabulary) {
+  // TODO: remove this ugly function as soon as possible. It has got hacky since
+  // now not only fields may be providers of synonyms.
   if (!module_exists('taxonomy')) {
     return array();
   }
@@ -975,7 +836,10 @@ function synonyms_synonyms_fields($vocabulary) {
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
   $behavior_implementations = synonyms_behavior_get_all_enabled('taxonomy_term', $bundle);
   foreach ($behavior_implementations as $v) {
-    $fields[] = $v['field_name'];
+    $field_name = synonyms_provider_field_field_name($v['provider']);
+    if (field_info_field($field_name)) {
+      $fields[] = $field_name;
+    }
   }
   return $fields;
 }
@@ -997,126 +861,112 @@ function synonyms_views_api() {
  *   Name of the synonyms behavior whose existing implementations should be
  *   loaded. Basically it has to be name of a ctools plugin of "behavior" type.
  * @param string $entity_type
- *   Optional filter to limit the search for existing implementations only to
- *   those that apply to the provided entity type
+ *   Behavior implementations of what entity type should be looked up
  * @param string|array $bundle
- *   Optional filter to limit the search for existing implementations only to
- *   those that apply to the provided bundle and entity type (the $entity_type
- *   argument). You may supply array of bundle names if you want to limit your
- *   search within a few bundles
+ *   Behavior implementations of what bundle(-s) should be looked up. If you
+ *   want to look up only a single bundle, provide a string. If you want to
+ *   look up multiple bundles at a time, provide an array of bundles. Empty
+ *   array here would mean to include all bundles that are known within provided
+ *   $entity_type
  * @param bool $only_enabled
  *   Optional filter to limit the search for existing implementations only to
  *   those that are currently enabled
- * @param bool $include_deleted
- *   Optional filter to include the behaviors from deleted instances
  *
  * @return array
- *   Array of loaded existing synonyms behavior implementations. It is keyed
- *   by ID of the field instance to which the behavior implementation applies.
- *   The underlying array will have the following structure:
+ *   Array of loaded existing synonyms behavior implementations. The underlying
+ *   array will have the following structure:
  *   - behavior: (string) Behavior name of this behavior implementation, i.e.
  *     name of a ctools plugin of "behavior" type
+ *   - entity_type: (string) Entity type to which this behavior implementation
+ *     applies
+ *   - bundle: (string) Bundle name to which this behavior implementation
+ *     applies
+ *   - provider: (string) Name of this synonyms provider
+ *   - label: (string) Human friendly name of this synonyms provider
+ *   - class: (string) Name of PHP class that implements behavior interface
  *   - settings: (mixed) Behavior settings, its internal structure depends on
  *     the type of behavior. If this value is NULL, it means the behavior
- *     implementation is currently disabled for the field instance
- *   - entity_type: (string) Entity type to which this behavior implementation
- *     applies
- *   - bundle: (string) Bundle name to which this behavior implementation
- *     applies
- *   - field_name: (string) Name of a field to which this behavior
- *     implementation applies
- *   - instance_id: (int) ID of the instance to which this behavior
- *     implementation applies
+ *     implementation is currently disabled for this synonyms provider
+ *   - object: (SynonymsBehavior) If the synonyms provider is enabled for this
+ *     behavior, this property will contain a fully initialized object that
+ *     corresponds to this behavior implementation. This object is ready for
+ *     use: to query for synonyms or invoke any other methods behavior interface
+ *     declares
  */
-function synonyms_behavior_get($behavior, $entity_type = NULL, $bundle = NULL, $only_enabled = FALSE, $include_deleted = FALSE) {
-  $behavior_implementation_info = synonyms_behavior_implementation_info($behavior);
-  $supported_field_types = array_keys($behavior_implementation_info);
+function synonyms_behavior_get($behavior, $entity_type, $bundle, $only_enabled = FALSE) {
+  $behavior_implementations = array();
+  $enabled_behavior_implementations = array();
 
-  if (empty($supported_field_types)) {
-    return array();
-  }
-
-  $query = db_select('field_config_instance', 'i');
-  $field_alias = $query->innerJoin('field_config', 'f', 'f.id = i.field_id');
-  $query->condition($field_alias . '.type', $supported_field_types);
-  if ($entity_type) {
-    $query->condition('i.entity_type', $entity_type);
-  }
-  if ($bundle) {
-    $query->condition('i.bundle', $bundle);
-  }
-  if (!$include_deleted) {
-    $query->condition('i.deleted', 0);
-  }
-
-  $settings_alias = $query->addJoin($only_enabled ? 'INNER' : 'LEFT OUTER', 'synonyms_settings', 's', 's.instance_id = i.id AND s.behavior = :behavior', array(
-    ':behavior' => $behavior,
-  ));
-  $query->fields($settings_alias, array('behavior', 'settings_serialized'));
-
-  $query->fields('i', array('entity_type', 'bundle', 'field_name'));
-  $query->addField('i', 'id', 'instance_id');
+  $query = db_select('synonyms_settings', 's');
+  $query->fields('s');
+  $query->condition('behavior', $behavior);
+  $query->condition('entity_type', $entity_type);
+  $query->condition('bundle', synonyms_bundle_normalize($entity_type, $bundle));
   $result = $query->execute();
-  $result = $result->fetchAllAssoc('instance_id', PDO::FETCH_ASSOC);
+  foreach ($result as $row) {
+    $row = (array) $row;
+    if ($only_enabled) {
+      $behavior_implementations[] = $row;
+    }
+    else {
+      $enabled_behavior_implementations[$row['bundle']][$row['provider']] = $row;
+    }
+  }
 
-  return synonyms_behavior_settings_unpack($result);
+  if (!$only_enabled) {
+    foreach (synonyms_bundle_normalize($entity_type, $bundle) as $bundle_name) {
+      foreach (synonyms_providers($entity_type, $bundle_name, $behavior) as $provider_info) {
+        if (isset($enabled_behavior_implementations[$bundle_name][$provider_info['provider']])) {
+          $provider_info['settings_serialized'] = $enabled_behavior_implementations[$bundle_name][$provider_info['provider']]['settings_serialized'];
+        }
+        $behavior_implementations[] = $provider_info;
+      }
+    }
+  }
+  return synonyms_behavior_settings_unpack($behavior_implementations);
 }
 
 /**
- * Load all enabled behaviors on an entity_type and a bundle.
+ * Load all enabled behavior implementations on an entity_type and a bundle.
  *
- * This is useful when you want to do some operation on all enabled synonyms
- * behaviors for a specific entity_type and a bundle.
+ * This is useful when you want to do some operation on all enabled behavior
+ * implementations for a specific entity_type and a bundle.
  *
  * @param string $entity_type
- *   Entity type whose enabled behaviors should be loaded
+ *   Entity type whose enabled behavior implementations should be loaded
  * @param string|array $bundle
- *   Optionally filter by bundle whose enabled behaviors should be loaded. You
- *   can supply here string - single bundle name or an array of bundle names
- * @param string $field_name
- *   Optional filter to only return enabled synonyms behaviors of a specific
- *   field
+ *   Optionally filter by bundle whose enabled behavior implementations should
+ *   be loaded. You can supply here string - single bundle name or an array of
+ *   bundle names. Empty array implies all existing bundle names for a provided
+ *   $entity_type
+ * @param string $provider
+ *   Optional filter to only return enabled synonyms behavior implementations of
+ *   a specific provider
  *
  * @return array
- *   Array of enabled behaviors for a provided entity type and a bundle. Each
- *   sub array will have the following structure:
- *   - behavior: (string) Name of the synonyms behavior
- *   - settings: (mixed) Behavior settings, its internal structure depends on
- *     the type of behavior.
- *   - entity_type: (string) Entity type to which this behavior implementation
- *     applies
- *   - bundle: (string) Bundle name to which this behavior implementation
- *     applies
- *   - field_name: (string) Name of the field on which this synonyms behavior is
- *     enabled
- *   - instance_id: (int) ID of the field instance to which this behavior
- *     implementation applies
+ *   Array of enabled behavior implementations for a provided entity type and a
+ *   bundle. Return structure of this function is identical to the return
+ *   structure of synonyms_behavior_get()
  */
-function synonyms_behavior_get_all_enabled($entity_type, $bundle = NULL, $field_name = NULL) {
+function synonyms_behavior_get_all_enabled($entity_type, $bundle = array(), $provider = NULL) {
   $query = db_select('synonyms_settings', 's');
-  $instance_alias = $query->innerJoin('field_config_instance', 'i', 'i.id = s.instance_id');
-  $query->fields($instance_alias, array('field_name', 'entity_type', 'bundle'));
-  $query->fields('s', array('behavior', 'settings_serialized'));
-  $query->addField($instance_alias, 'id', 'instance_id');
-
-  $query->condition($instance_alias . '.entity_type', $entity_type);
-  if ($bundle) {
-    $query->condition($instance_alias . '.bundle', $bundle);
-  }
-  if ($field_name) {
-    $query->condition($instance_alias . '.field_name', $field_name);
+  $query->fields('s');
+  $query->condition('entity_type', $entity_type);
+  $query->condition('bundle', synonyms_bundle_normalize($entity_type, $bundle));
+  if ($provider) {
+    $query->condition('provider', $provider);
   }
 
   $result = $query->execute();
-  $rows = array();
+  $behavior_implementations = array();
   foreach ($result as $row) {
-    $rows[] = (array) $row;
+    $behavior_implementations[] = (array) $row;
   }
-  return synonyms_behavior_settings_unpack($rows);
+  return synonyms_behavior_settings_unpack($behavior_implementations);
 }
 
 /**
- * Retrieve information about all ctools plugins of type 'synonyms behavior'.
+ * Retrieve information about all cTools plugins of type 'synonyms behavior'.
  *
  * @return array
  *   Array of information on all available synonyms behavior plugins
@@ -1127,52 +977,50 @@ function synonyms_behaviors() {
 }
 
 /**
- * Fetch information about synonyms behaviors implementations per field type.
+ * Collect info on available synonyms providers.
  *
- * Fetch the map between field types and the PHP classes that implement synonyms
- * behaviors for them.
- *
+ * @param string $entity_type
+ *   Entity type whose available synonyms providers to collect
+ * @param string $bundle
+ *   Bundle whose available synonyms providers to collect
  * @param string $behavior
- *   What specific behavior is queried. Supply here keys from the return of
- *   synonyms_behaviors() function
+ *   Name of behavior whose available synonyms providers to collect
  *
  * @return array
- *   Array of information about what field types implement the provided behavior
- *   through what PHP classes. Keys of this array are field types, whereas their
- *   values are names of PHP classes that implement the provided behavior for
- *   that particular field type
+ *   Array of available synonyms providers. Each synonym provider will be an
+ *   array with the following structure:
+ *   - provider: (string) Machine name of the synonyms provider
+ *   - label: (string) Human name of the synonyms provider
+ *   - class: (string) Name of PHP class that implements behavior interface
+ *     which is stated in cTools behavior plugin definition
+ *   - entity_type: (string) Entity type that corresponds to this synonyms
+ *     provider
+ *   - bundle: (string) Bundle that corresponds to this synonyms provider
+ *   - behavior: (string) Name of behavior that corresponds to this synonyms
+ *     provider
  */
-function synonyms_behavior_implementation_info($behavior) {
-  $info = module_invoke_all('synonyms_behavior_implementation_info', $behavior);
-  drupal_alter('synonyms_behavior_implementation_info', $info, $behavior);
-  return $info;
+function synonyms_providers($entity_type, $bundle, $behavior) {
+  $providers = array();
+  foreach (module_invoke_all('synonyms_provider_info', $entity_type, $bundle, $behavior) as $provider) {
+    $provider['entity_type'] = $entity_type;
+    $provider['behavior'] = $behavior;
+    $provider['bundle'] = $bundle;
+    $providers[$provider['provider']] = $provider;
+  }
+  return $providers;
 }
 
 /**
- * Determine what PHP class implements specific behavior for specific field.
+ * Execute unpacking on the just loaded synonyms behavior implementations.
  *
- * @param string $behavior
- *   Name of the behavior, implementation of which is requested. It should be
- *   one of the keys of the return of synonyms_behaviors() function.
- * @param array $field
- *   Field definition array for which PHP class implementing $behavior is
- *   requested
- *
- * @return string
- *   Name of the PHP class that implements $behavior for $field field
- */
-function synonyms_behavior_implementation_class($behavior, $field) {
-  $map = synonyms_behavior_implementation_info($behavior);
-  return $map[$field['type']];
-}
-
-/**
- * Execute unpacking operation on the just loaded synonyms behavior settings.
- *
- * @param array $settings
- *   Array of the just loaded settings. Each sub array should contain the
- *   following keys:
- *   - instance_id: (int) ID of the instance to which it applies
+ * @param array $behavior_implementations
+ *   Array of the just loaded behavior_implementations. Each sub array should
+ *   contain the following keys:
+ *   - entity_type: (string) Entity type that corresponds to this behavior
+ *     implementation
+ *   - bundle: (string) Bundle that corresponds to this behavior implementation
+ *   - provider: (string) Synonyms provider that corresponds to this behavior
+ *     implementation
  *   - behavior: (string) name of the synonyms behavior to which these settings
  *     apply
  *   - settings_serialized: (string) serialized content of the settings
@@ -1180,99 +1028,98 @@ function synonyms_behavior_implementation_class($behavior, $field) {
  * @return array
  *   Unpacked version of the provided $settings
  */
-function synonyms_behavior_settings_unpack($settings) {
-  foreach ($settings as &$setting) {
-    $setting['settings'] = $setting['settings_serialized'] ? unserialize($setting['settings_serialized']) : NULL;
+function synonyms_behavior_settings_unpack($behavior_implementations) {
+  // Array of previously queried synonyms provider info.
+  $cache = array();
+
+  foreach ($behavior_implementations as &$behavior_implementation) {
+    if (!isset($cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']])) {
+      $cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']] = synonyms_providers($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
+    }
+
+    // Behavior implementation info may be not available in some rare extreme
+    // cases. For example, when a field instance is being deleted.
+    if (isset($cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']][$behavior_implementation['provider']])) {
+      $behavior_implementation += $cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']][$behavior_implementation['provider']];
+    }
+    if (isset($behavior_implementation['settings_serialized'])) {
+      $behavior_implementation['settings'] = unserialize($behavior_implementation['settings_serialized']);
+      if (isset($behavior_implementation['class'])) {
+        $class = $behavior_implementation['class'];
+        $behavior_implementation['object'] = new $class($behavior_implementation);
+      }
+    }
   }
-  return $settings;
+  unset($behavior_implementation);
+
+  return $behavior_implementations;
 }
 
 /**
- * Save the provided synonyms behavior settings into the database.
+ * Save the provided synonyms behavior implementation into the database.
  *
- * @param array $settings
- *   Array of settings. It must have the following structure:
- *   - instance_id: (int) ID of the instance to which it applies
- *   - behavior: (string) name of the synonyms behavior to which it applies
- *   - settings: (mixed) the content of settings themselves
+ * @param array $behavior_implementation
+ *   Behavior implementation array, such as one from synonyms_behavior_get() or
+ *   alike
  */
-function synonyms_behavior_settings_save($settings) {
-  if (!isset($settings['settings'])) {
-    $settings['settings'] = array();
+function synonyms_behavior_implementation_save($behavior_implementation) {
+  if (!isset($behavior_implementation['settings'])) {
+    $behavior_implementation['settings'] = array();
   }
-  $settings['settings_serialized'] = serialize($settings['settings']);
+  $behavior_implementation['settings_serialized'] = serialize($behavior_implementation['settings']);
   $result = db_merge('synonyms_settings')
     ->key(array(
-      'instance_id' => $settings['instance_id'],
-      'behavior' => $settings['behavior'],
+      'entity_type' => $behavior_implementation['entity_type'],
+      'bundle' => $behavior_implementation['bundle'],
+      'provider' => $behavior_implementation['provider'],
+      'behavior' => $behavior_implementation['behavior'],
     ))
     ->fields(array(
-      'instance_id' => $settings['instance_id'],
-      'behavior' => $settings['behavior'],
-      'settings_serialized' => $settings['settings_serialized'],
+      'entity_type' => $behavior_implementation['entity_type'],
+      'bundle' => $behavior_implementation['bundle'],
+      'provider' => $behavior_implementation['provider'],
+      'behavior' => $behavior_implementation['behavior'],
+      'settings_serialized' => $behavior_implementation['settings_serialized'],
     ))
     ->execute();
 
   switch ($result) {
     case MergeQuery::STATUS_INSERT:
       $behavior_definition = synonyms_behaviors();
-      $behavior_definition = $behavior_definition[$settings['behavior']];
+      $behavior_definition = $behavior_definition[$behavior_implementation['behavior']];
       $enabled_callback = ctools_plugin_get_function($behavior_definition, 'enabled callback');
       if ($enabled_callback) {
-        $enabled_callback($behavior_definition, $settings['settings'], synonyms_instance_id_load($settings['instance_id']));
+        $enabled_callback($behavior_definition, $behavior_implementation);
       }
       break;
   }
 }
 
 /**
- * Delete settings for specific behavior and field instance.
+ * Delete behavior implementation from database.
  *
- * @param int $instance_id
- *   ID of the instance for which settings should be removed
- * @param string $behavior
- *   Name of behavior for which settings should be removed
+ * @param array $behavior_implementation
+ *   Behavior implementation array, such as one from synonyms_behavior_get() or
+ *   alike
  */
-function synonyms_behavior_settings_delete($instance_id, $behavior) {
+function synonyms_behavior_implementation_delete($behavior_implementation) {
   $behavior_definition = synonyms_behaviors();
-  $behavior_definition = $behavior_definition[$behavior];
+  $behavior_definition = $behavior_definition[$behavior_implementation['behavior']];
   $disabled_callback = ctools_plugin_get_function($behavior_definition, 'disabled callback');
   if ($disabled_callback) {
-    $instance = synonyms_instance_id_load($instance_id);
-    $behavior_implementation = synonyms_behavior_get($behavior, $instance['entity_type'], $instance['bundle'], TRUE, TRUE);
-    if (isset($behavior_implementation[$instance_id])) {
-      $behavior_implementation = $behavior_implementation[$instance_id];
-      $disabled_callback($behavior_definition, $behavior_implementation, $instance);
+    foreach (synonyms_behavior_get($behavior_implementation['behavior'], $behavior_implementation['entity_type'], $behavior_implementation['bundle'], TRUE) as $enabled_behavior_implementation) {
+      if ($enabled_behavior_implementation['provider'] == $behavior_implementation['provider']) {
+        $disabled_callback($behavior_definition, $behavior_implementation);
+        break;
+      }
     }
   }
   db_delete('synonyms_settings')
-    ->condition('instance_id', $instance_id)
-    ->condition('behavior', $behavior)
+    ->condition('provider', $behavior_implementation['provider'])
+    ->condition('entity_type', $behavior_implementation['entity_type'])
+    ->condition('bundle', $behavior_implementation['bundle'])
+    ->condition('behavior', $behavior_implementation['behavior'])
     ->execute();
-}
-
-/**
- * Supportive function to load a field instance by its ID.
- *
- * @param int $instance_id
- *   ID of the instance that should be loaded
- * @param bool $reset
- *   Whether to reset static cache of this function
- *
- * @return array
- *   Instance definition array
- */
-function synonyms_instance_id_load($instance_id, $reset = FALSE) {
-  $cache = &drupal_static(__FUNCTION__, array(), $reset);
-
-  if (!isset($cache[$instance_id])) {
-    $cache[$instance_id] = db_select('field_config_instance', 'i')
-      ->fields('i', array('entity_type', 'bundle', 'field_name'))
-      ->condition('id', $instance_id)
-      ->execute()
-      ->fetchAssoc();
-  }
-  return field_info_instance($cache[$instance_id]['entity_type'], $cache[$instance_id]['field_name'], $cache[$instance_id]['bundle']);
 }
 
 /**
@@ -1383,11 +1230,10 @@ function synonyms_select_option_entity($entity, $entity_type, $synonym = NULL, $
   $key = $synonym ? $entity_id . ':' . drupal_html_class($synonym) : $entity_id;
   $wording = entity_label($entity_type, $entity);
   if ($synonym) {
-    $instance = field_info_instance($behavior_implementation['entity_type'], $behavior_implementation['field_name'], $behavior_implementation['bundle']);
     $wording = format_string($behavior_implementation['settings']['wording'], array(
       '@synonym' => $synonym,
       '@entity' => entity_label($behavior_implementation['entity_type'], $entity),
-      '@field_name' => drupal_strtolower($instance['label']),
+      '@field_name' => drupal_strtolower($behavior_implementation['label']),
     ));
   }
 
@@ -1437,7 +1283,7 @@ function synonyms_select_entity_options($field, $instance, $entity = NULL) {
       $entity = $entities[$entity_id];
       $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type']);
       foreach ($behavior_implementations as $behavior_implementation) {
-        foreach (synonyms_extract_synonyms($entity, $behavior_implementation) as $synonym) {
+        foreach ($behavior_implementation['object']->extractSynonyms($entity) as $synonym) {
           $synonyms_options[$target_entity_info['bundles'][$bundle]['label']][] = synonyms_select_option_entity($entity, $field['settings']['target_type'], $synonym, $behavior_implementation);
         }
       }
@@ -1492,7 +1338,7 @@ function synonyms_select_taxonomy_term_sort_name_options_recursive($vocabulary, 
       $term->depth = $depth;
       $options[] = synonyms_select_option_entity($term, 'taxonomy_term', NULL, NULL, array('depth'));
       foreach ($behavior_implementations[$bundle] as $implementation) {
-        foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
+        foreach ($implementation['object']->extractSynonyms($term) as $synonym) {
           $options[] = synonyms_select_option_entity($term, 'taxonomy_term', $synonym, $implementation, array('depth'));
         }
       }
@@ -1529,9 +1375,6 @@ function synonyms_select_sort_name($a, $b) {
 /**
  * Test if entity type is applicable for having synonyms.
  *
- * Only fieldable entity types can have synonyms for the very reason that
- * synonyms are stored in fields.
- *
  * @param string $entity_type
  *   Entity type to test
  *
@@ -1541,29 +1384,44 @@ function synonyms_select_sort_name($a, $b) {
  *   FALSE is returned
  */
 function synonyms_entity_type_load($entity_type) {
-  $entity_info = entity_get_info($entity_type);
-  if ($entity_info && $entity_info['fieldable']) {
+  if (module_exists('synonyms_provider_property')) {
+    // If this submodule is enabled, we get into infinite recursion. Moreover,
+    // it is very likely all entity types will have at least 1 property on them,
+    // so the synonyms_provider_property module will get at least 1 synonym for
+    // every entity type. So it is quite safe assumption to say we accept about
+    // any entity type.
     return $entity_type;
+  }
+  $bundles = synonyms_bundle_normalize($entity_type, array());
+  foreach (synonyms_behaviors() as $behavior => $behavior_definition) {
+    foreach ($bundles as $bundle) {
+      $providers = synonyms_providers($entity_type, $bundle, $behavior);
+      if (!empty($providers)) {
+        return $entity_type;
+      }
+    }
   }
   return FALSE;
 }
 
 /**
- * Test if provided entity type and bundle exist.
+ * Test if provided entity type and bundle are applicable for having synonyms.
  *
  * @param string $bundle
- *   Bundle name to test for existence
+ *   Bundle name to test for ability to have synonyms
  * @param string $entity_type
- *   Entity type to test for existence
+ *   Entity type to test for ability to have synonyms
  *
  * @return bool|string
- *   Whether the provided entity type and bundle exist. If they exist, the
- *   $bundle input argument is returned. Otherwise FALSE is returned
+ *   Whether the provided entity type and bundle may have synonyms. If they do,
+ *   the $bundle input argument is returned. Otherwise FALSE is returned
  */
 function synonyms_bundle_load($bundle, $entity_type) {
-  $entity_info = entity_get_info($entity_type);
-  if ($entity_info && isset($entity_info['bundles'][$bundle])) {
-    return $bundle;
+  foreach (synonyms_behaviors() as $behavior => $behavior_definition) {
+    $providers = synonyms_providers($entity_type, $bundle, $behavior);
+    if (!empty($providers)) {
+      return $bundle;
+    }
   }
   return FALSE;
 }
@@ -1626,4 +1484,24 @@ function synonyms_field_target_bundles($field) {
     $target_bundles = NULL;
   }
   return $target_bundles;
+}
+
+/**
+ * Normalize bundle argument.
+ *
+ * @param string $entity_type
+ *   Entity type to define scope of bundles
+ * @param string|array $bundle
+ *   Either a single bundle name or an array of bundle names. Empty array
+ *   implies all known bundles for $entity_type
+ *
+ * @return array
+ *   Normalized array bundle names
+ */
+function synonyms_bundle_normalize($entity_type, $bundle) {
+  $bundle = (array) $bundle;
+  if (empty($bundle)) {
+    $bundle = array_keys(field_info_bundles($entity_type));
+  }
+  return $bundle;
 }

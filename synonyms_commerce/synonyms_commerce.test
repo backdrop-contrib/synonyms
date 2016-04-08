@@ -8,7 +8,7 @@
 /**
  * Test CommerceProductReferenceSynonymsBehavior class.
  */
-class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynonymsBehaviorWebTestCase {
+class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynonymsProviderFieldWebTestCase {
 
   /**
    * GetInfo method.
@@ -34,13 +34,7 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
       'cardinality' => FIELD_CARDINALITY_UNLIMITED,
       'type' => 'commerce_product_reference',
     );
-/*
-    $this->fields['enabled']['disabled'] = array(
-      'field_name' => 'reference_disabled',
-      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
-      'type' => 'commerce_product_reference',
-    );
-*/
+
     parent::setUp($modules);
   }
 

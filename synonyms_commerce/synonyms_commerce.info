@@ -2,7 +2,7 @@ name = Synonyms Commerce
 description = "Provides synonyms integration with Commerce."
 package = Synonyms
 core = 7.x
-dependencies[] = synonyms
+dependencies[] = synonyms_provider_field
 dependencies[] = commerce_product_reference
 
 test_dependencies[] = commerce:commerce_product_ui

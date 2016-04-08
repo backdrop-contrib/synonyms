@@ -1,9 +1,10 @@
 name = Synonyms
-description = "Provides synonyms feature for working with Drupal Taxonomy"
+description = "Provides synonyms feature for Drupal entities."
 package = Synonyms
 core = 7.x
 dependencies[] = ctools
 dependencies[] = entity
+configure = admin/structure/synonyms
 
 test_dependencies[] = entityreference:entityreference
 

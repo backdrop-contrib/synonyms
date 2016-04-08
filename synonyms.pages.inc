@@ -140,7 +140,7 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
         }
 
         $new_tids = array();
-        foreach (synonyms_synonyms_find_behavior($condition, $implementation) as $synonym) {
+        foreach ($implementation['object']->synonymsFind($condition) as $synonym) {
           if (!$suggest_only_unique || !in_array($synonym->entity_id, $new_tids)) {
             $tags_return[] = array(
               'tid' => $synonym->entity_id,
@@ -279,7 +279,7 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
         }
 
         $new_target_ids = array();
-        foreach (synonyms_synonyms_find_behavior($condition, $implementation) as $synonym) {
+        foreach ($implementation['object']->synonymsFind($condition) as $synonym) {
           if (!$suggest_only_unique || !in_array($synonym->entity_id, $new_target_ids)) {
             $matches[] = array(
               'target_id' => $synonym->entity_id,
@@ -351,11 +351,10 @@ function synonyms_autocomplete_format($matches, $prefix) {
     }
     $wording = check_plain($match['name']);
     if (isset($match['synonym'])) {
-      $instance = synonyms_instance_id_load($match['behavior_implementation']['instance_id']);
       $wording = format_string(filter_xss($match['behavior_implementation']['settings']['wording']), array(
         '@entity' => $match['name'],
         '@synonym' => $match['synonym'],
-        '@field_name' => drupal_strtolower($instance['label']),
+        '@field_name' => drupal_strtolower($match['behavior_implementation']['label']),
       ));
     }
     $output[$prefix . $n] = $wording;
@@ -374,7 +373,7 @@ function theme_synonyms_behaviors_settings($variables) {
   $table = array(
     'header' => array(t('Field')),
     'rows' => array(),
-    'empty' => t('Seems like there are no fields for which synonyms functionality is available. Try adding a text field to get started.'),
+    'empty' => t('Seems like there are no fields for which synonyms functionality available. Try adding a text field to get started.'),
   );
 
   $instance_ids = array();
@@ -442,6 +441,8 @@ function synonyms_settings_form($form, &$form_state, $entity_type, $bundle) {
     '#tree' => TRUE,
     '#theme' => 'synonyms_behaviors_settings',
     '#id' => 'synonyms-behaviors-settings-wrapper',
+    '#entity_type' => $entity_type,
+    '#bundle' => $bundle,
   );
 
   $behaviors = synonyms_behaviors();
@@ -454,21 +455,20 @@ function synonyms_settings_form($form, &$form_state, $entity_type, $bundle) {
     $behavior_implementations = synonyms_behavior_get($behavior, $entity_type, $bundle);
 
     foreach ($behavior_implementations as $implementation) {
-      $instance = field_info_instance($implementation['entity_type'], $implementation['field_name'], $implementation['bundle']);
-      $form['settings'][$behavior][$implementation['instance_id']]['#title'] = $instance['label'];
+      $form['settings'][$behavior][$implementation['provider']]['#title'] = $implementation['label'];
 
-      if (isset($form_state['values']['settings'][$behavior][$implementation['instance_id']])) {
-        $behavior_settings = (bool) $form_state['values']['settings'][$behavior][$implementation['instance_id']]['enabled'];
+      if (isset($form_state['values']['settings'][$behavior][$implementation['provider']])) {
+        $behavior_settings = (bool) $form_state['values']['settings'][$behavior][$implementation['provider']]['enabled'];
       }
       else {
-        $behavior_settings = !is_null($implementation['settings']);
+        $behavior_settings = isset($implementation['settings']);
       }
 
       if ($behavior_settings) {
-        if (isset($form_state['values']['settings'][$behavior][$implementation['instance_id']]['settings'])) {
-          $behavior_settings = $form_state['values']['settings'][$behavior][$implementation['instance_id']]['settings'];
+        if (isset($form_state['values']['settings'][$behavior][$implementation['provider']]['settings'])) {
+          $behavior_settings = $form_state['values']['settings'][$behavior][$implementation['provider']]['settings'];
         }
-        elseif ($implementation['settings']) {
+        elseif (isset($implementation['settings'])) {
           $behavior_settings = $implementation['settings'];
         }
         else {
@@ -476,7 +476,7 @@ function synonyms_settings_form($form, &$form_state, $entity_type, $bundle) {
         }
       }
 
-      $form['settings'][$behavior][$implementation['instance_id']]['enabled'] = array(
+      $form['settings'][$behavior][$implementation['provider']]['enabled'] = array(
         '#type' => 'checkbox',
         '#title' => t('Enable'),
         '#default_value' => $behavior_settings !== FALSE,
@@ -484,13 +484,13 @@ function synonyms_settings_form($form, &$form_state, $entity_type, $bundle) {
 
       $settings_form = ctools_plugin_get_function($behavior_info, 'settings form callback');
       if ($settings_form) {
-        $form['settings'][$behavior][$implementation['instance_id']]['enabled']['#ajax'] = array(
+        $form['settings'][$behavior][$implementation['provider']]['enabled']['#ajax'] = array(
           'callback' => 'synonyms_settings_form_ajax',
           'wrapper' => $form['settings']['#id'],
         );
 
         if ($behavior_settings !== FALSE) {
-          $form['settings'][$behavior][$implementation['instance_id']]['settings'] = $settings_form($form, $form_state, $behavior_settings);
+          $form['settings'][$behavior][$implementation['provider']]['settings'] = $settings_form($form, $form_state, $behavior_settings);
         }
       }
     }
@@ -515,16 +515,19 @@ function synonyms_settings_form($form, &$form_state, $entity_type, $bundle) {
  */
 function synonyms_settings_form_submit($form, &$form_state) {
   foreach ($form_state['values']['settings'] as $behavior => $settings) {
-    foreach ($settings as $instance_id => $behavior_settings) {
+    foreach ($settings as $provider => $behavior_settings) {
+      $behavior_implementation = array(
+        'entity_type' => $form['settings']['#entity_type'],
+        'bundle' => $form['settings']['#bundle'],
+        'provider' => $provider,
+        'behavior' => $behavior,
+        'settings' => isset($behavior_settings['settings']) ? $behavior_settings['settings'] : NULL,
+      );
       if ($behavior_settings['enabled']) {
-        synonyms_behavior_settings_save(array(
-          'instance_id' => $instance_id,
-          'behavior' => $behavior,
-          'settings' => isset($behavior_settings['settings']) ? $behavior_settings['settings'] : NULL,
-        ));
+        synonyms_behavior_implementation_save($behavior_implementation);
       }
       else {
-        synonyms_behavior_settings_delete($instance_id, $behavior);
+        synonyms_behavior_implementation_delete($behavior_implementation);
       }
     }
   }

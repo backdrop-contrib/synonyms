@@ -12,13 +12,25 @@ function synonyms_schema() {
   $schema = array();
 
   $schema['synonyms_settings'] = array(
-    'description' => 'Stores synonyms settings for all the entities and fields. Only enabled synonyms behaviors are included in this table.',
+    'description' => 'Stores synonyms settings for all the entities and providers. Only enabled synonyms behavior implementations are included in this table.',
     'fields' => array(
-      'instance_id' => array(
-        'description' => 'Reference to {field_config_instance}.id of the instance, whose synonyms settings are stored in this row.',
-        'type' => 'int',
+      'entity_type' => array(
+        'description' => 'Entity type whose behavior implementation is stored in this row.',
+        'type' => 'varchar',
+        'length' => 255,
         'not null' => TRUE,
-        'unsigned' => TRUE,
+      ),
+      'bundle' => array(
+        'description' => 'Bundle name whose behavior implementation is stored in this row.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'provider' => array(
+        'description' => 'Provider name whose behavior implementation is stored in this row.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
       ),
       'behavior' => array(
         'description' => 'Name of the synonyms behavior (ctools plugin), whose settings are stored in this row.',
@@ -34,16 +46,10 @@ function synonyms_schema() {
       ),
     ),
     'unique keys' => array(
-      'instance_behavior' => array('instance_id', 'behavior'),
-    ),
-    'foreign keys' => array(
-      'field_config_instance' => array(
-        'table' => 'field_config_instance',
-        'columns' => array('instance_id' => 'id'),
-      ),
+      'behavior_implementation' => array('behavior', 'entity_type', 'bundle', 'provider'),
     ),
     'indexes' => array(
-      'behavior' => array('behavior'),
+      'all_enabled' => array('entity_type', 'bundle', 'provider'),
     ),
   );
 

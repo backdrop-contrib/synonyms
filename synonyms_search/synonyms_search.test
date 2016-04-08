@@ -10,8 +10,6 @@
  */
 abstract class AbstractSearchSynonymsWebTestCase extends SynonymsWebTestCase {
 
-  protected $behavior = 'search';
-
   /**
    * What search type is being tested.
    *
@@ -30,6 +28,8 @@ abstract class AbstractSearchSynonymsWebTestCase extends SynonymsWebTestCase {
    * SetUp method.
    */
   public function setUp($modules = array()) {
+    $this->behavior_implementation['behavior'] = 'search';
+
     array_unshift($modules, 'synonyms_search');
     parent::setUp($modules);
 
@@ -162,9 +162,6 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
       'entity_type' => 'node',
       'bundle' => 'synonyms_test_content',
       'label' => 'Synonym Terms',
-      'widget' => array(
-        'type' => 'synonyms_autocomplete',
-      ),
     );
 
     field_create_instance($instance);
@@ -218,7 +215,7 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
 
     // We disable entire field from search integration and make sure for all
     // synonyms search results are empty.
-    synonyms_behavior_settings_delete($this->fields['enabled']['instance']['id'], $this->behavior);
+    synonyms_behavior_implementation_delete($this->behavior_implementation);
     $this->cronRun();
     foreach ($this->terms as $k => $term) {
       $items = field_get_items('taxonomy_term', $term, $this->fields['enabled']['field']['field_name']);
@@ -257,9 +254,6 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
       'entity_type' => 'node',
       'bundle' => 'synonyms_test_content',
       'label' => 'Synonym Terms',
-      'widget' => array(
-        'type' => 'synonyms_autocomplete',
-      ),
     );
 
     field_create_instance($instance);
@@ -313,7 +307,7 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
 
     // We disable entire field from search integration and make sure for all
     // synonyms search results are empty.
-    synonyms_behavior_settings_delete($this->fields['enabled']['instance']['id'], $this->behavior);
+    synonyms_behavior_implementation_delete($this->behavior_implementation);
     $this->cronRun();
     foreach ($this->terms as $k => $term) {
       $items = field_get_items('taxonomy_term', $term, $this->fields['enabled']['field']['field_name']);
@@ -422,7 +416,7 @@ class TermSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
 
     // We disable entire field from search integration and make sure for all
     // synonyms search results are empty.
-    synonyms_behavior_settings_delete($this->fields['enabled']['instance']['id'], $this->behavior);
+    synonyms_behavior_implementation_delete($this->behavior_implementation);
     $this->cronRun();
     foreach ($this->terms as $k => $term) {
       $items = field_get_items('taxonomy_term', $term, $this->fields['enabled']['field']['field_name']);

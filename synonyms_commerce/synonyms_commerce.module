@@ -6,9 +6,9 @@
  */
 
 /**
- * Implements hook_synonyms_behavior_implementation_info().
+ * Implements hook_synonyms_provider_field_provider_info().
  */
-function synonyms_commerce_synonyms_behavior_implementation_info($behavior) {
+function synonyms_commerce_synonyms_provider_field_provider_info($behavior) {
   switch ($behavior) {
     case 'select':
     case 'autocomplete':

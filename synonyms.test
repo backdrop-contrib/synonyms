@@ -59,23 +59,23 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
   );
 
   /**
-   * Name of a synonyms behavior that is being tested.
-   *
-   * @var string
-   */
-  protected $behavior;
-
-  /**
-   * Settings for the behavior that is being tested.
+   * Behavior implementation that is being tested.
    *
    * @var array
    */
-  protected $behavior_settings = array();
+  protected $behavior_implementation = array(
+    'provider' => NULL,
+    'entity_type' => 'taxonomy_term',
+    'bundle' => NULL,
+    'behavior' => NULL,
+    'settings' => array(),
+  );
 
   /**
    * SetUp method.
    */
   public function setUp($modules = array()) {
+    array_unshift($modules, 'synonyms_provider_field');
     array_unshift($modules, 'synonyms');
     parent::setUp($modules);
 
@@ -109,11 +109,18 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
     $this->fields['disabled']['instance'] = field_create_instance($this->fields['disabled']['instance']);
     $this->fields['disabled']['instance'] = field_info_instance($this->fields['disabled']['instance']['entity_type'], $this->fields['disabled']['instance']['field_name'], $this->fields['disabled']['instance']['bundle']);
 
-    synonyms_behavior_settings_save(array(
-      'instance_id' => $this->fields['enabled']['instance']['id'],
-      'behavior' => $this->behavior,
-      'settings' => $this->behavior_settings,
-    ));
+    $this->behavior_implementation['bundle'] = $this->vocabulary->machine_name;
+    if (!$this->behavior_implementation['provider']) {
+      $this->behavior_implementation['provider'] = synonyms_provider_field_provider_name($this->fields['enabled']['field']);
+    }
+
+    synonyms_behavior_implementation_save($this->behavior_implementation);
+    foreach (synonyms_behavior_get($this->behavior_implementation['behavior'], $this->behavior_implementation['entity_type'], $this->behavior_implementation['bundle'], TRUE) as $behavior_implementation) {
+      if ($behavior_implementation['provider'] == $this->behavior_implementation['provider']) {
+        $this->behavior_implementation = $behavior_implementation;
+        break;
+      }
+    }
   }
 
   /**
@@ -140,8 +147,6 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
  */
 class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
 
-  protected $behavior = 'autocomplete';
-
   /**
    * GetInfo method.
    */
@@ -151,6 +156,14 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
       'description' => 'Ensure that the general synonyms functionality works correctly.',
       'group' => 'Synonyms',
     );
+  }
+
+  /**
+   * SetUp method.
+   */
+  public function setUp($modules = array()) {
+    $this->behavior_implementation['behavior'] = 'autocomplete';
+    parent::setUp($modules);
   }
 
   /**
@@ -234,14 +247,12 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     );
     taxonomy_term_save($term);
 
-    // We enable the same field in another synonym behavior too and test that we
-    // only get unique synonyms, i.e. synonyms do not get doubled for being
-    // sourced from the same field twice (once per each behavior).
-    synonyms_behavior_settings_save(array(
-      'instance_id' => $this->fields['enabled']['instance']['id'],
-      'behavior' => 'select',
-      'settings' => '@synonym',
-    ));
+    // We enable the same provider in another synonym behavior too and test that
+    // we only get unique synonyms, i.e. synonyms do not get doubled for being
+    // sourced from the same provider twice (once per each behavior).
+    $behavior_implementation = $this->behavior_implementation;
+    $behavior_implementation['behavior'] = 'select';
+    synonyms_behavior_implementation_save($behavior_implementation);
 
     // Testing the 'synonyms' property of 'taxonomy_term' entity.
     $synonyms = entity_metadata_wrapper('taxonomy_term', $no_synonyms_term)->synonyms->value();
@@ -251,7 +262,7 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $synonyms = entity_metadata_wrapper('taxonomy_term', $two_synonyms_term)->synonyms->value();
     $this->assertTrue(count($synonyms) == 2 && $synonyms[0] == $synonym1 && $synonyms[1] == $synonym2, 'Successfully retrieved synonyms_get_sanitized() for a term with 2 synonyms.');
 
-    synonyms_behavior_settings_delete($this->fields['enabled']['instance']['id'], 'select');
+    synonyms_behavior_implementation_delete($behavior_implementation);
 
     // Testing the function synonyms_get_term_by_synonym().
     $tid = synonyms_get_term_by_synonym(drupal_strtoupper($synonym), $this->vocabulary, $term_parent->tid);
@@ -314,12 +325,6 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
  */
 abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCase {
 
-  protected $behavior = 'autocomplete';
-
-  protected $behavior_settings = array(
-    'wording' => '@synonym @field_name @entity',
-  );
-
   /**
    * Array of fully loaded taxonomy term entities to be used in this test.
    *
@@ -361,6 +366,11 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
    * SetUp method.
    */
   public function setUp($modules = array()) {
+    $this->behavior_implementation['behavior'] = 'autocomplete';
+    $this->behavior_implementation['settings'] = array(
+      'wording' => '@synonym @field_name @entity',
+    )
+    ;
     parent::setUp($modules);
 
     // Creating a test content type.
@@ -552,7 +562,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       if (is_array($synonyms)) {
         foreach ($synonyms as $delta => $item) {
           $this->assertAutocompleteMenuPath(drupal_strtolower(drupal_substr($item['value'], 1, -1)), array(
-            $this->terms[$k]->name => $this->synonymAutocompleteResult($this->terms[$k], $item['value'], $this->fields['enabled']['instance']),
+            $this->terms[$k]->name => $this->synonymAutocompleteResult($this->terms[$k], $item['value']),
           ), 'Submitting a name similar to synonym#' . $delta . ' of the term ' . $k . ' into autocomplete path yields the term included.');
         }
       }
@@ -560,23 +570,21 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
 
     $this->assertAutocompleteMenuPath('one_term_name_another_synonym_', array(
       $this->terms['name_another_synonym']->name => $this->terms['name_another_synonym']->name,
-      $this->terms['synonym_another_name']->name => $this->synonymAutocompleteResult($this->terms['synonym_another_name'], $this->terms['synonym_another_name']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
+      $this->terms['synonym_another_name']->name => $this->synonymAutocompleteResult($this->terms['synonym_another_name'], $this->terms['synonym_another_name']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Submitting a name similar to name of one term and synonym of another into autocomplete path yields both terms included.');
 
     // Enabling another field in the autocomplete suggestions to make sure 2 and
     // more fields can participate in the action.
-    synonyms_behavior_settings_save(array(
-      'instance_id' => $this->fields['disabled']['instance']['id'],
-      'behavior' => $this->behavior,
-      'settings' => $this->behavior_settings,
-    ));
+    $behavior_implementation = $this->behavior_implementation;
+    $behavior_implementation['provider'] = synonyms_provider_field_provider_name($this->fields['disabled']['field']);
+    synonyms_behavior_implementation_save($behavior_implementation);
     $this->terms['one_synonym']->{$this->fields['disabled']['field']['field_name']} = $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']};
     taxonomy_term_save($this->terms['one_synonym']);
     $this->assertAutocompleteMenuPath($this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], array(
-      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
-      $this->terms['one_synonym']->name . ' ' => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['disabled']['instance']),
+      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $behavior_implementation),
+      $this->terms['one_synonym']->name . ' ' => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Autocomplete works correctly when more than 1 field participates in the autocomplete behavior.');
-    synonyms_behavior_settings_delete($this->fields['disabled']['instance']['id'], $this->behavior);
+    synonyms_behavior_implementation_delete($behavior_implementation);
 
     // Submit a name that is similar to one of our terms and is similar to a
     // a term from another vocabulary, which should not participate in the
@@ -599,11 +607,9 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       'bundle' => $another_vocabulary->machine_name,
     ));
     $instance = field_info_instance($instance['entity_type'], $instance['field_name'], $instance['bundle']);
-    synonyms_behavior_settings_save(array(
-      'instance_id' => $instance['id'],
-      'behavior' => $this->behavior,
-      'settings' => $this->behavior_settings,
-    ));
+    $behavior_implementation = $this->behavior_implementation;
+    $behavior_implementation['bundle'] = $instance['bundle'];
+    synonyms_behavior_implementation_save($behavior_implementation);
 
     $term_similar_term = (object) array(
       'name' => $this->terms['no_synonyms']->name,
@@ -620,7 +626,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     );
     taxonomy_term_save($term_similar_synonym);
     $this->assertAutocompleteMenuPath($term_similar_synonym->name, array(
-      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $term_similar_synonym->name, $this->fields['enabled']['instance']),
+      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $term_similar_synonym->name),
     ), 'Submitting synonym similar to term from another bundle does not include the term from another bundle.');
 
     $synonym_similar_term = (object) array(
@@ -644,8 +650,8 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     );
     taxonomy_term_save($synonym_similar_synonym);
     $this->assertAutocompleteMenuPath($this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], array(
-      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance'])
-    ), 'Submitting synonym similar to a synonym of a term from another bundle does not includde the term from another bundle.');
+      $this->terms['one_synonym']->name => $this->synonymAutocompleteResult($this->terms['one_synonym'], $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+    ), 'Submitting synonym similar to a synonym of a term from another bundle does not include the term from another bundle.');
   }
 
   /**
@@ -706,7 +712,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     ), 'Suggestions Size option is respected in autocomplete widget for entity and synonym suggestion entries.');
 
     $this->assertAutocompleteMenuPath(drupal_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
-      $this->terms['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
+      $this->terms['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Suggestions Size option is respected in autocomplete widget for synonyms suggestion entries.');
 
     $this->assertAutocompleteMenuPath('one_term_name_another_synonym_', array(
@@ -721,12 +727,12 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     // Testing disabled "Suggest only one entry per term" setting.
     $this->assertAutocompleteMenuPath($this->terms['name_similar_synonym']->name, array(
       $this->terms['name_similar_synonym']->name => $this->terms['name_similar_synonym']->name,
-      $this->terms['name_similar_synonym']->name . ' ' => $this->synonymAutocompleteResult($this->terms['name_similar_synonym'], $this->terms['name_similar_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
+      $this->terms['name_similar_synonym']->name . ' ' => $this->synonymAutocompleteResult($this->terms['name_similar_synonym'], $this->terms['name_similar_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Both term and its synonym are shown when "Suggest only one entry per term" is off.');
 
     $this->assertAutocompleteMenuPath(drupal_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
-      $this->terms['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
-      $this->terms['similar_synonyms']->name . ' ' => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'], $this->fields['enabled']['instance']),
+      $this->terms['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
+      $this->terms['similar_synonyms']->name . ' ' => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value']),
     ), 'Multiple synonyms are shown when "Suggest only one entry per term" is off.');
 
     // Testing enabled "Suggest only one entry per term" setting.
@@ -739,7 +745,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     ), 'Only term is shown and synonym is not shown when "Suggest only one entry per term" is on.');
 
     $this->assertAutocompleteMenuPath(drupal_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
-      $this->terms['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->fields['enabled']['instance']),
+      $this->terms['similar_synonyms']->name => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Only single synonym is shown when "Suggest only one entry per term" is on.');
   }
 
@@ -776,17 +782,23 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
    *   Fully loaded entity for which the result is generated.
    * @param string $synonym
    *   Synonym by which the entity was hit in the search
-   * @param array $instance
-   *   Instance definition array which the $synonym originates from
+   * @param array $behavior_implementation
+   *   Behavior implementation array which the $synonym originates from. If
+   *   omitted, standard $this->behavior_implementation is considered
    *
    * @return string
    *   Formatted autocomplete result
    */
-  protected function synonymAutocompleteResult($entity, $synonym, $instance) {
-    return format_string($this->behavior_settings['wording'], array(
+  protected function synonymAutocompleteResult($entity, $synonym, $behavior_implementation = NULL) {
+    if (!$behavior_implementation) {
+      $behavior_implementation = $this->behavior_implementation;
+    }
+    $provider = synonyms_providers($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
+    $provider = $provider[$behavior_implementation['provider']];
+    return format_string($behavior_implementation['settings']['wording'], array(
       '@synonym' => $synonym,
-      '@entity' => entity_label($this->fields['enabled']['instance']['entity_type'], $entity),
-      '@field_name' => drupal_strtolower($instance['label']),
+      '@entity' => entity_label($behavior_implementation['entity_type'], $entity),
+      '@field_name' => drupal_strtolower($provider['label']),
     ));
   }
 }
@@ -929,12 +941,6 @@ class EntityReferenceAutocompleteSynonymsWebTestCase extends AbstractAutocomplet
  */
 abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
 
-  protected $behavior = 'select';
-
-  protected $behavior_settings = array(
-    'wording' => '@synonym @entity @field_name',
-  );
-
   /**
    * Array of fully loaded taxonomy term entities to be used in this test.
    *
@@ -973,6 +979,11 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
   protected $reference_instance = array();
 
   public function setUp($modules = array()) {
+    $this->behavior_implementation['behavior'] = 'select';
+    $this->behavior_implementation['settings'] = array(
+      'wording' => '@synonym @entity @field_name',
+    );
+
     parent::setUp($modules);
 
     // Creating a test content type.
@@ -1060,12 +1071,15 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
         $v['synonym'] = NULL;
       }
       $key = $this->synonymSelectKey($v['entity'], $v['synonym']);
-      $label = entity_label($this->fields['enabled']['instance']['entity_type'], $v['entity']);
+      $label = entity_label($this->behavior_implementation['entity_type'], $v['entity']);
       if ($v['synonym']) {
-        $label = format_string($this->behavior_settings['wording'], array(
+        $provider = synonyms_providers($this->behavior_implementation['entity_type'], $this->behavior_implementation['bundle'], $this->behavior_implementation['behavior']);
+        $provider = $provider[$this->behavior_implementation['provider']];
+
+        $label = format_string($this->behavior_implementation['settings']['wording'], array(
           '@synonym' => $v['synonym'],
           '@entity'=> $label,
-          '@field_name' => $this->fields['enabled']['instance']['label'],
+          '@field_name' => $provider['label'],
         ));
       }
 
@@ -1086,7 +1100,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
   /**
    * Generate necessary prefix before the main wording of the label in select.
    *
-   * It may be useful to insert some kind of hiderarchy indention, for example.
+   * It may be useful to insert some kind of hierarchy indention, for example.
    *
    * @param object $entity
    *   Fully loaded entity object whose prefix is requested in the option label
@@ -1115,7 +1129,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
    *   Key for the option of a synonym friendly select
    */
   protected function synonymSelectKey($entity, $synonym = NULL) {
-    $entity_id = entity_extract_ids($this->fields['enabled']['instance']['entity_type'], $entity);
+    $entity_id = entity_extract_ids($this->behavior_implementation['entity_type'], $entity);
     $key = $entity_id[0];
     if ($synonym) {
       $key .= ':' . drupal_html_class($synonym);
@@ -1772,875 +1786,9 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
 }
 
 /**
- * Base class for all tests that test Synonyms behavior implementation classes.
- */
-abstract class AbstractSynonymsBehaviorWebTestCase extends SynonymsWebTestCase {
-
-  protected $behavior = 'autocomplete';
-
-  /**
-   * Test synonymsExtract() method.
-   *
-   * @param array $items
-   *   Array of field items to be saved in tested term
-   * @param array $standard
-   *   Expected return of synonymsExtract() method
-   * @param string $message
-   *   Any custom message to be added to the standard one and passed to
-   *   SimpleTest assertion method
-   */
-  protected function assertSynonymsExtract($items, $standard, $message = '') {
-    $behavior_implementation = synonyms_behavior_implementation_class($this->behavior, $this->fields['enabled']['field']);
-    $behavior_implementation = new $behavior_implementation();
-
-    $term = (object) array(
-      'name' => $this->randomName(),
-      'vid' => $this->vocabulary->vid,
-    );
-    $term->{$this->fields['enabled']['field']['field_name']} = $items;
-    taxonomy_term_save($term);
-    $items = field_get_items('taxonomy_term', $term, $this->fields['enabled']['field']['field_name']);
-
-    $synonyms = is_array($items) ? $behavior_implementation->extractSynonyms($items, $this->fields['enabled']['field'], $this->fields['enabled']['instance'], $term, 'taxonomy_term') : array();
-    $this->assertTrue(count(array_intersect($standard, $synonyms)) == count($standard), get_class($behavior_implementation) . '::extractSynonyms() passed: ' . $message);
-    // Cleaning up.
-    taxonomy_term_delete($term->tid);
-  }
-
-  /**
-   * Test mergeEntityAsSynonym method.
-   *
-   * @param array $items
-   *   Parameter will be passed directly to the behavior implementation object
-   * @param object $synonym_entity
-   *   Parameter will be passed directly to the behavior implementation object
-   * @param string $synonym_entity_type
-   *   Parameter will be passed directly to the behavior implementation object
-   * @param array $standard
-   *   Array that is expected to be returned by the tested method
-   * @param string $message
-   *   Any custom message to be added to the standard one and passed to
-   *   SimpleTest assertion method
-   */
-  protected function assertMergeEntityAsSynonym($items, $synonym_entity, $synonym_entity_type, $standard, $message = '') {
-    $behavior_implementation = synonyms_behavior_implementation_class($this->behavior, $this->fields['enabled']['field']);
-    $behavior_implementation = new $behavior_implementation();
-
-    $message = get_class($behavior_implementation) . '::mergeEntityAsSynonym() passed: ' . $message;
-
-    $extra_items = $behavior_implementation->mergeEntityAsSynonym($items, $this->fields['enabled']['field'], $this->fields['enabled']['instance'], $synonym_entity, $synonym_entity_type);
-    foreach ($standard as $k => $v) {
-      if (count(array_intersect($standard[$k], $extra_items[$k])) != count($standard[$k])) {
-        $this->fail($message);
-        return;
-      }
-    }
-    $this->pass($message);
-  }
-
-
-  /**
-   * Test synonymFind method.
-   *
-   * @param array $meta_data
-   *   Array of meta data. Each subarray represents a single term and whether it
-   *   is expected to be included in the return of the method. Should have the
-   *   following structure:
-   *   - items: (array) Array of field items. Terms will be automatically
-   *     created with those items
-   *   - found_synonyms: (array) Array of synonyms that are expected to be found
-   *     for the given term, i.e. if "found_synonyms" is empty, it means the
-   *     term should not be found for the given $condition. If the
-   *     "found_synonyms" is not empty, then each of the elements in this array
-   *     should trigger appearance of the term in the results for the given
-   *     $condition
-   * @param QueryConditionInterface $condition
-   *   Database condition that will be passed to the synonymsFind method
-   * @param string $message
-   *   Any custom message to be added to the standard one and passed to
-   *   SimpleTest assertion method
-   */
-  protected function assertSynonymsFind($meta_data, QueryConditionInterface $condition, $message = '') {
-    $behavior_implementation = synonyms_behavior_implementation_class($this->behavior, $this->fields['enabled']['field']);
-    $behavior_implementation = new $behavior_implementation();
-
-    $message = get_class($behavior_implementation) . '::synonymsFind() pass: ' . $message;
-
-    $terms = array();
-    foreach ($meta_data as $v) {
-      $term = (object) array(
-        'name' => $this->randomName(),
-        'vid' => $this->vocabulary->vid,
-        $this->fields['enabled']['field']['field_name'] => $v['items'],
-      );
-      taxonomy_term_save($term);
-      $term->found_synonyms = $v['found_synonyms'];
-      $terms[] = $term;
-    }
-
-    $return = $behavior_implementation->synonymsFind($condition, $this->fields['enabled']['field'], $this->fields['enabled']['instance']);
-
-    $rows = array();
-    foreach ($return as $row) {
-      $rows[] = $row;
-    }
-
-    $success = TRUE;
-    $total_rows_standard = 0;
-    $total_rows = 0;
-    foreach ($terms as $term) {
-      foreach ($term->found_synonyms as $found_synonym) {
-        $total_rows_standard++;
-        $is_found = FALSE;
-        $total_rows = 0;
-        foreach ($rows as $row) {
-          $total_rows++;
-          if ($row->entity_id == $term->tid && $row->synonym == $found_synonym) {
-            $is_found = TRUE;
-          }
-        }
-        $success = $success && $is_found;
-      }
-    }
-
-    $success = $success && $total_rows_standard == $total_rows;
-
-    $this->assertTrue($success, $message);
-
-    // Cleaning up.
-    foreach ($terms as $term) {
-      taxonomy_term_delete($term->tid);
-    }
-  }
-}
-
-/**
- * Test TextSynonymsBehavior class.
- */
-class TextSynonymsBehaviorWebTestCase extends AbstractSynonymsBehaviorWebTestCase {
-
-  /**
-   * GetInfo method.
-   */
-  public static function getInfo() {
-    return array(
-      'name' => 'TextSynonymsBehavior',
-      'description' => 'Ensure that the synonyms module extracts synonyms from text and number fields correctly.',
-      'group' => 'Synonyms',
-    );
-  }
-
-  /**
-   * Test synonyms extraction for 'text' field type.
-   */
-  public function testText() {
-    // Testing synonymsExtract().
-    $this->assertSynonymsExtract(array(), array(), 'on empty field.');
-
-    $synonym = $this->randomName();
-    $this->assertSynonymsExtract(array(
-      LANGUAGE_NONE => array(
-        0 => array('value' => $synonym),
-      ),
-    ), array($synonym), 'on a field that holds one value.');
-
-    // Testing mergeEntityAsSynonym() method.
-    $node = (object) array(
-      'title' => $this->randomName(),
-      'type' => 'page',
-    );
-    node_save($node);
-    $this->assertMergeEntityAsSynonym(array(), $node, 'node', array(array('value' => $node->title)), 'on a node entity.');
-
-    // Testing synonymFind() method.
-    $this->assertSynonymsFind(array(), db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on empty field.');
-
-    $meta_data = array();
-    $meta_data[] = array(
-      'items' => array(),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on a field without values.');
-
-    $meta_data = array();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $this->randomName()),
-        ),
-      ),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on a field with a value, but when searching for another string.');
-
-    $meta_data = array();
-    $synonym = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym),
-        ),
-      ),
-      'found_synonyms' => array($synonym),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym), 'on a field with a single value searching for that string');
-
-    $meta_data = array();
-    $synonym = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym),
-          array('value' => $this->randomName()),
-        ),
-      ),
-      'found_synonyms' => array($synonym),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym), 'on a field with 2 values searching for one of those 2 values');
-
-    $meta_data = array();
-    $synonym = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym),
-          array('value' => $this->randomName()),
-        ),
-      ),
-      'found_synonyms' => array($synonym),
-    );
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $this->randomName()),
-          array('value' => $this->randomName()),
-        ),
-      ),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym), 'on 2 fields with 2 values each searching for one of those values');
-
-    $meta_data = array();
-    $synonym = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym),
-        ),
-      ),
-      'found_synonyms' => array($synonym),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr($synonym, 1, -1)) . '%', 'LIKE'), 'on a field with a value searching for a string LIKE the %value%');
-
-    $meta_data = array();
-    $tag = $this->randomName();
-    $synonym1 = $tag . $this->randomName();
-    $synonym2 =  $tag . $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym1),
-          array('value' => $synonym2),
-        ),
-      ),
-      'found_synonyms' => array($synonym1, $synonym2),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, db_like($tag) . '%', 'LIKE'), 'on a field with 2 similar values searching a string like %both values%');
-
-    $meta_data = array();
-    $synonym1 = $this->randomName();
-    $synonym2 = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym1),
-          array('value' => $synonym2),
-        ),
-      ),
-      'found_synonyms' => array($synonym1, $synonym2),
-    );
-    $this->assertSynonymsFind($meta_data, db_or()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym1)->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym2), 'on a field with 2 values searching for value1 or value2');
-
-    $meta_data = array();
-    $synonym = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym),
-          array('value' => $this->randomName()),
-        ),
-      ),
-      'found_synonyms' => array($synonym),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym)->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, db_like(drupal_substr($synonym, 0, -1)) . '%', 'LIKE'), 'on a field with 2 values searching for value1 and LIKE value1%');
-
-    $meta_data = array();
-    $synonym1 = $this->randomName();
-    $synonym2 = $this->randomName();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym1),
-          array('value' => $synonym2),
-        ),
-      ),
-      'found_synonyms' => array($synonym1, $synonym2),
-    );
-    $condition = db_or();
-    $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym1);
-    $condition->condition(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym2)->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, db_like(drupal_substr($synonym2, 0, -1)) . '%', 'LIKE'));
-    $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for (value1 or (value2 AND value2%))');
-
-    $meta_data = array();
-    $synonym1 = $this->randomName() . ' ' . $this->randomName() . ' ' . $this->randomName();
-    $synonym2 = str_replace(' ', '-', $synonym1);
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('value' => $synonym1),
-          array('value' => $synonym2),
-        ),
-      ),
-      'found_synonyms' => array($synonym1, $synonym2),
-    );
-    $condition = db_and()
-      ->where("REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :synonym", array(
-        ':synonym' => $synonym2,
-      ));
-    $this->assertSynonymsFind($meta_data, $condition, "on a field with 2 values, where 2nd value replaces spaces with dashes in the 1st value, searching for REPLACE(column, ' ', '-') = value2");
-  }
-}
-
-/**
- * Test TaxonomySynonymsBehavior class.
- */
-class TaxonomySynonymsBehaviorWebTestCase extends AbstractSynonymsBehaviorWebTestCase {
-
-  /**
-   * Taxonomy vocabulary object terms.
-   *
-   * Terms of this vocabulary are synonyms of the main vocabulary terms.
-   *
-   * @var object
-   */
-  protected $vocabularySource;
-
-  /**
-   * GetInfo method.
-   */
-  public static function getInfo() {
-    return array(
-      'name' => 'TaxonomySynonymsBehavior',
-      'description' => 'Ensure that the synonyms module extracts synonyms from taxonomy term reference fields correctly.',
-      'group' => 'Synonyms',
-    );
-  }
-
-  /**
-   * SetUp method.
-   */
-  public function setUp($modules = array()) {
-    $this->fields['enabled']['field'] = array(
-      'field_name' => 'term',
-      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
-      'type' => 'taxonomy_term_reference',
-      'settings' => array(
-        'allowed_values' => array(
-          array(
-            'vocabulary' => 'source_vocabulary',
-            'parent' => 0,
-          ),
-        ),
-      ),
-    );
-    parent::setUp($modules);
-
-    $this->vocabularySource = (object) array(
-      'name' => $this->randomName(),
-      'machine_name' => 'source_vocabulary',
-    );
-    taxonomy_vocabulary_save($this->vocabularySource);
-  }
-
-  /**
-   * Test synonyms extraction for 'taxonomy_term_reference' field type.
-   */
-  public function testTaxonomyTermReference() {
-    // Testing synonymsExtract().
-    $this->assertSynonymsExtract(array(), array(), 'on empty field.');
-
-    $synonym_term = $this->createSynonymTerm();
-    $this->assertSynonymsExtract(array(
-      LANGUAGE_NONE => array(
-        0 => array(
-          'tid' => $synonym_term->tid,
-        ),
-      ),
-    ), array($synonym_term->name), 'on a field that holds one value.');
-
-    // Testing mergeEntityAsSynonym() method.
-    $synonym_term = $this->createSynonymTerm();
-    $this->assertMergeEntityAsSynonym(array(), $synonym_term, 'taxonomy_term', array(array('tid' => $synonym_term->tid)), 'on a term from referenced vocabulary.');
-
-    // Testing synonymFind() method.
-    $this->assertSynonymsFind(array(), db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on empty field');
-
-    $meta_data = array();
-    $meta_data[] = array(
-      'items' => array(),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on a field without values');
-
-    $meta_data = array();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $this->createSynonymTerm()->tid),
-        ),
-      ),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on a field with a value but searching for another string');
-
-    $meta_data = array();
-    $synonym_term = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term->name),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term->name), 'on a field with a single value searching for that string');
-
-    $meta_data = array();
-    $synonym_term = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $this->createSynonymTerm()->tid),
-          array('tid' => $synonym_term->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term->name),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term->name), 'on a field with 2 values searching for one of those 2 values');
-
-    $meta_data = array();
-    $synonym_term = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term->tid),
-          array('tid' => $this->createSynonymTerm()->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term->name),
-    );
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $this->createSynonymTerm()->tid),
-          array('tid' => $this->createSynonymTerm()->tid),
-        ),
-      ),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term->name), 'on 2 fields with 2 values each searching for one of those values');
-
-    $meta_data = array();
-    $synonym_term = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term->name),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr($synonym_term->name, 1, -1)) . '%', 'LIKE'), 'on a field with a value searching for a string LIKE the %value%');
-
-    $meta_data = array();
-    $tag = $this->randomName();
-    $synonym_term1 = $this->createSynonymTerm($tag . $this->randomName());
-    $synonym_term2 = $this->createSynonymTerm($tag . $this->randomName());
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term1->tid),
-          array('tid' => $synonym_term2->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term1->name, $synonym_term2->name),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, db_like($tag) . '%', 'LIKE'), 'on a field with 2 similar values searching a string like %both values%');
-
-    $meta_data = array();
-    $synonym_term1 = $this->createSynonymTerm();
-    $synonym_term2 = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term1->tid),
-          array('tid' => $synonym_term2->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term1->name, $synonym_term2->name),
-    );
-    $this->assertSynonymsFind($meta_data, db_or()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term1->name)->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term2->name), 'on a field with 2 values searching for value1 or value2');
-
-    $meta_data = array();
-    $synonym_term = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term->tid),
-          array('tid' => $this->createSynonymTerm()->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term->name),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term->name)->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr($synonym_term->name, 1, -1)) . '%', 'LIKE'), 'on a field with 2 values searching for value1 and LIKE value1%');
-
-    $meta_data = array();
-    $synonym_term1 = $this->createSynonymTerm();
-    $synonym_term2 = $this->createSynonymTerm();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term1->tid),
-          array('tid' => $synonym_term2->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term1->name, $synonym_term2->name),
-    );
-    $condition = db_or();
-    $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term1->name);
-    $condition->condition(db_and()
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $synonym_term2->name)
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr($synonym_term2->name, 1 -1)) . '%', 'LIKE'));
-    $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for (value1 or (value2 AND value2%))');
-
-    $meta_data =  array();
-    $synonym_term1 = $this->createSynonymTerm($this->randomName() . ' ' . $this->randomName() . ' ' . $this->randomName());
-    $synonym_term2 = $this->createSynonymTerm(str_replace(' ', '-', $synonym_term1->name));
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('tid' => $synonym_term1->tid),
-          array('tid' => $synonym_term2->tid),
-        ),
-      ),
-      'found_synonyms' => array($synonym_term1->name, $synonym_term2->name),
-    );
-    $condition = db_and()
-      ->where("REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :synonym", array(
-        ':synonym' => $synonym_term2->name,
-      ));
-    $this->assertSynonymsFind($meta_data, $condition, "on a field with 2 values, where 2nd value replaces spaces with dashes in the 1st value, searching for REPLACE(column, ' ', '-') = value2");
-  }
-
-  /**
-   * Supportive function.
-   *
-   * Create a taxonomy term in the synonyms source vocabulary with the specified
-   * name.
-   *
-   * @param string $name
-   *   Name of the term to be created. If nothing is supplied a random string
-   *   is used
-   *
-   * @return object
-   *   Fully loaded taxonomy term object of the just created term
-   */
-  protected function createSynonymTerm($name = NULL) {
-    if (is_null($name)) {
-      $name = $this->randomName();
-    }
-    $synonym_term = (object) array(
-      'name' => $name,
-      'vid' => $this->vocabularySource->vid,
-    );
-    taxonomy_term_save($synonym_term);
-    return $synonym_term;
-  }
-}
-
-/**
- * Test EntityReferenceSynonymsBehavior class.
- */
-class EntityReferenceSynonymsBehaviorWebTestCase extends AbstractSynonymsBehaviorWebTestCase {
-
-  /**
-   * GetInfo method.
-   */
-  public static function getInfo() {
-    return array(
-      'name' => 'EntityReferenceSynonymsBehavior',
-      'description' => 'Ensure that the synonyms module extracts synonyms from entity reference fields correctly.',
-      'group' => 'Synonyms',
-    );
-  }
-
-  /**
-   * SetUp method.
-   */
-  public function setUp($modules = array()) {
-    $modules[] = 'entityreference';
-
-    $this->fields['enabled']['field'] = array(
-      'field_name' => 'reference',
-      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
-      'type' => 'entityreference',
-      // For the sake of experiment we use entityreference field that references
-      // nodes of a Drupal standard type to make things easier.
-      'settings' => array(
-        'target_type' => 'node',
-        'handler' => 'base',
-        'handler_settings' => array(
-          'target_bundles' => array('page' => 'page'),
-          'sort' => array('type' => 'none'),
-        ),
-      ),
-    );
-
-    parent::setUp($modules);
-  }
-
-  /**
-   * Test synonyms extraction for 'entityreference' field type.
-   */
-  public function testEntityReference() {
-    // Testing synonymsExtract().
-    $this->assertSynonymsExtract(array(), array(), 'on empty field.');
-
-    $synonym_entity = $this->createNode();
-    $this->assertSynonymsExtract(array(
-      LANGUAGE_NONE => array(
-        0 => array(
-          'target_id' => entity_id('node', $synonym_entity),
-        ),
-      ),
-    ), array(entity_label('node', $synonym_entity)), 'on a field that holds one value.');
-
-    // Testing mergeEntityAsSynonym() method.
-    $node = $this->createNode();
-    $this->assertMergeEntityAsSynonym(array(), $node, 'node', array(array('target_id' => $node->nid)), 'on a node.');
-
-    // Testing synonymFind() method.
-    $this->assertSynonymsFind(array(), db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on empty field');
-
-    $meta_data = array();
-    $meta_data[] = array(
-      'items' => array(),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on a field without values');
-
-    $meta_data = array();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $this->createNode())),
-        ),
-      ),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $this->randomName()), 'on a field with a value but searching for another string');
-
-    $meta_data = array();
-    $synonym_entity = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity)),
-        ),
-      ),
-      'found_synonyms' => array(entity_label('node', $synonym_entity)),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity)), 'on a field with a single value searching for that string');
-
-    $meta_data = array();
-    $synonym_entity = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity)),
-          array('target_id' => entity_id('node', $this->createNode())),
-        ),
-      ),
-      'found_synonyms' => array(entity_label('node', $synonym_entity)),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity)), 'on a field with 2 values searching for one of those 2 values');
-
-    $meta_data = array();
-    $synonym_entity = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity)),
-          array('target_id' => entity_id('node', $this->createNode())),
-        ),
-      ),
-      'found_synonyms' => array(entity_label('node', $synonym_entity)),
-    );
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $this->createNode())),
-          array('target_id' => entity_id('node', $this->createNode())),
-        ),
-      ),
-      'found_synonyms' => array(),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity)), 'on 2 fields with 2 values each searching for one of those values');
-
-    $meta_data = array();
-    $synonym_entity = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity)),
-        ),
-      ),
-      'found_synonyms' => array(entity_label('node', $synonym_entity)),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr(entity_label('node', $synonym_entity), 1, -1)) . '%', 'LIKE'), 'on a field with a value searching for a string LIKE the %value%');
-
-    $meta_data = array();
-    $tag = $this->randomName();
-    $synonym_entity1 = $this->createNode($tag . $this->randomName());
-    $synonym_entity2 = $this->createNode($tag . $this->randomName());
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity1)),
-          array('target_id' => entity_id('node', $synonym_entity2)),
-        ),
-      ),
-      'found_synonyms' => array(
-        entity_label('node', $synonym_entity1),
-        entity_label('node', $synonym_entity2),
-      ),
-    );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, db_like($tag) . '%', 'LIKE'), 'on a field with 2 similar values searching a string like %both values%');
-
-    $meta_data = array();
-    $synonym_entity1 = $this->createNode();
-    $synonym_entity2 = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity1)),
-          array('target_id' => entity_id('node', $synonym_entity2)),
-        ),
-      ),
-      'found_synonyms' => array(
-        entity_label('node', $synonym_entity1),
-        entity_label('node', $synonym_entity2),
-      ),
-    );
-    $condition = db_or()
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity1))
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity2));
-    $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for value1 or value2');
-
-    $meta_data = array();
-    $synonym_entity = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity)),
-          array('target_id' => entity_id('node', $this->createNode())),
-        ),
-      ),
-      'found_synonyms' => array(entity_label('node', $synonym_entity)),
-    );
-    $condition = db_and()
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity))
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr(entity_label('node', $synonym_entity), 1, -1)) . '%', 'LIKE');
-    $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for value1 and LIKE value1%');
-
-    $meta_data = array();
-    $synonym_entity1 = $this->createNode();
-    $synonym_entity2 = $this->createNode();
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity1)),
-          array('target_id' => entity_id('node', $synonym_entity2)),
-        ),
-      ),
-      'found_synonyms' => array(
-        entity_label('node', $synonym_entity1),
-        entity_label('node', $synonym_entity2),
-      ),
-    );
-    $condition = db_or()
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity1))
-      ->condition(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, entity_label('node', $synonym_entity2))->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like(drupal_substr(entity_label('node', $synonym_entity2), 1, -1)) . '%', 'LIKE'));
-    $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for (value1 or (value2 AND value2%))');
-
-    $meta_data = array();
-    $synonym_entity1 = $this->createNode($this->randomName() . ' ' . $this->randomName() . ' ' . $this->randomName());
-    $synonym_entity2 = $this->createNode(str_replace(' ', '-', entity_label('node', $synonym_entity1)));
-    $meta_data[] = array(
-      'items' => array(
-        LANGUAGE_NONE => array(
-          array('target_id' => entity_id('node', $synonym_entity1)),
-          array('target_id' => entity_id('node', $synonym_entity2)),
-        ),
-      ),
-      'found_synonyms' => array(
-        entity_label('node', $synonym_entity1),
-        entity_label('node', $synonym_entity2),
-      ),
-    );
-    $condition = db_and()
-      ->where("REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-') = :synonym", array(
-        ':synonym' => entity_label('node', $synonym_entity2),
-      ));
-    $this->assertSynonymsFind($meta_data, $condition, "on a field with 2 values, where 2nd value replaces spaces with dashes in the 1st value, searching for REPLACE(column, ' ', '-') = value2");
-  }
-
-  /**
-   * Supportive function.
-   *
-   * Create an entity of necessary entity type (in our test it's node).
-   *
-   * @param string $label
-   *   Label to use for the entity that is about to be created
-   * @param string $bundle
-   *   Bundle to use for the entity that is about to be created
-   *
-   * @return object
-   *   Fully loaded entity object of the just created entity
-   */
-  protected function createNode($label = NULL, $bundle = 'page') {
-    if (is_null($label)) {
-      $label = $this->randomName();
-    }
-    $entity = (object) array(
-      'type' => $bundle,
-      'title' => $label,
-    );
-    node_save($entity);
-    return $entity;
-  }
-}
-
-/**
- * Test 'term_synonyms' cTools pargument plugin implementation.
+ * Test 'term_synonyms' cTools argument plugin implementation.
  */
 class TaxonomyTermArgumentSynonymsWebTestCase extends SynonymsWebTestCase {
-
-  protected $behavior = 'autocomplete';
-
-  protected $behavior_settings = array(
-    'wording' => '@synonym',
-  );
 
   /**
    * GetInfo method.
@@ -2651,6 +1799,17 @@ class TaxonomyTermArgumentSynonymsWebTestCase extends SynonymsWebTestCase {
       'description' => 'Ensure that synonyms friendly taxonomy terms cTools argument plugin works correctly.',
       'group' => 'Synonyms',
     );
+  }
+
+  /**
+   * SetUp method.
+   */
+  public function setUp($modules = array()) {
+    $this->behavior_implementation['behavior'] = 'autocomplete';
+    $this->behavior_implementation['settings'] = array(
+      'wording' => '@synonym',
+    );
+    parent::setUp($modules);
   }
 
   /**

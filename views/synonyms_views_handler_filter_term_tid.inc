@@ -65,7 +65,6 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
         $info = $this->synonyms_field_instance();
 
         $options = array();
-        // TODO: soon the widgets get renamed.
         $widget = $info['instance']['widget']['type'] == 'synonyms_select_taxonomy_term' ? $info['instance']['widget']['settings'] : field_info_widget_settings('synonyms_select_taxonomy_term');
         foreach ($info['field']['settings']['allowed_values'] as $tree) {
           if ($vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
@@ -76,7 +75,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
                   foreach ($terms as $term) {
                     $options[] = synonyms_select_option_entity($term, 'taxonomy_term', NULL, NULL, array('depth'));
                     foreach ($behavior_implementations as $implementation) {
-                      foreach (synonyms_extract_synonyms($term, $implementation) as $synonym) {
+                      foreach ($implementation['object']->extractSynonyms($term) as $synonym) {
                         $options[] = synonyms_select_option_entity($term, 'taxonomy_term', $synonym, $implementation, array('depth'));
                       }
                     }
@@ -156,6 +155,14 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
           return;
         }
 
+        $all_key = array_search('All', $form_state['values'][$this->options['expose']['identifier']]);
+        if ($all_key !== FALSE) {
+          unset($form_state['values'][$this->options['expose']['identifier']][$all_key]);
+        }
+
+        if (!empty($form_state['values'][$this->options['expose']['identifier']])) {
+          return;
+        }
         $this->validated_exposed_input = $form_state['values'][$this->options['expose']['identifier']];
         break;
 
@@ -214,7 +221,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
         foreach ($missing as $tag => $v) {
           $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $tag);
         }
-        $synonyms = synonyms_synonyms_find_behavior($condition, $behavior_implementation);
+        $synonyms = $behavior_implementation['object']->synonymsFind($condition);
         foreach ($synonyms as $synonym) {
           $synonym->synonym = drupal_strtolower($synonym->synonym);
           unset($missing[$synonym->synonym]);
