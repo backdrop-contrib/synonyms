@@ -6,9 +6,9 @@
  */
 
 /**
- * Implements hook_synonyms_provider_info().
+ * Implements hook_synonyms_behavior_implementation_info().
  */
-function synonyms_provider_property_synonyms_provider_info($entity_type, $bundle, $behavior) {
+function synonyms_provider_property_synonyms_behavior_implementation_info($entity_type, $bundle, $behavior) {
   $providers = array();
 
   switch ($behavior) {

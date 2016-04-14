@@ -46,10 +46,11 @@ function synonyms_schema() {
       ),
     ),
     'unique keys' => array(
+      // We build 2 different indexes on the same column set because there are
+      // 2 different functions that may query this table and the columns they
+      // filter on may vary.
       'behavior_implementation' => array('behavior', 'entity_type', 'bundle', 'provider'),
-    ),
-    'indexes' => array(
-      'all_enabled' => array('entity_type', 'bundle', 'provider'),
+      'all_enabled' => array('entity_type', 'bundle', 'provider', 'behavior'),
     ),
   );
 

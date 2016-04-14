@@ -26,13 +26,13 @@ interface SynonymsBehavior {
   /**
    * Add an entity as a synonym into another entity.
    *
-   * Basically this method should be called when you want to add some entity
-   * as a synonym to another entity (for example when you merge one entity
-   * into another and besides merging want to add synonym of the merged entity
-   * into the trunk entity). You should update $trunk_entity in such a way that
-   * it holds $synonym_entity as a synonym (it all depends on how data is stored
-   * in your behavior implementation, but probably you will store entity label
-   * or its ID as you cannot literaly store an entity inside of another entity).
+   * Basically this method should be called when you want to add some entity as
+   * a synonym to another entity (for example when you merge one entity into
+   * another and besides merging want to add synonym of the merged entity into
+   * the trunk entity). You should update $trunk_entity in such a way that it
+   * holds $synonym_entity as a synonym (it all depends on how data is stored in
+   * your behavior implementation, but probably you will store entity label or
+   * its ID as you cannot literally store an entity inside of another entity).
    * If entity of type $synonym_entity_type cannot be converted into a format
    * expected by your behavior implementation, just do nothing.
    *
@@ -132,7 +132,7 @@ abstract class AbstractSynonymsBehavior implements SynonymsBehavior {
    * Process condition in 'synonymsFind' method.
    *
    * Process condition in 'synonymsFind' method replacing all references of
-   * synonym column with the real name of that column.
+   * synonym and entity ID columns with the real names of those columns.
    *
    * @param QueryConditionInterface $condition
    *   Condition that should be processed

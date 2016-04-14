@@ -106,9 +106,9 @@ function synonyms_search_term_update_index($term) {
 }
 
 /**
- * Implements hook_synonyms_provider_field_provider_info().
+ * Implements hook_synonyms_provider_field_behavior_implementation_info().
  */
-function synonyms_search_synonyms_provider_field_provider_info($behavior) {
+function synonyms_search_synonyms_provider_field_behavior_implementation_info($behavior) {
   switch ($behavior) {
     case 'search':
       return array(
@@ -118,6 +118,7 @@ function synonyms_search_synonyms_provider_field_provider_info($behavior) {
         'text' => 'SearchTextSynonymsBehavior',
         'taxonomy_term_reference' => 'SearchTaxonomySynonymsBehavior',
         'entityreference' => 'SearchEntityReferenceSynonymsBehavior',
+        'commerce_product_reference' => 'SearchCommerceProductReferenceSynonymsBehavior',
       );
       break;
   }

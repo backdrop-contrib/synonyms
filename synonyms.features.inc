@@ -23,7 +23,7 @@ function synonyms_features_export($data, &$export, $module_name) {
     $behavior_implementation = synonyms_behavior_get_all_enabled($entity_type, $bundle, $provider, $behavior);
     $behavior_implementation = reset($behavior_implementation);
 
-    $provider_info = synonyms_providers($entity_type, $bundle, $behavior);
+    $provider_info = synonyms_behavior_implementation_info($entity_type, $bundle, $behavior);
     $provider_info = $provider_info[$provider];
     $export['dependencies'][] = $provider_info['module'];
 

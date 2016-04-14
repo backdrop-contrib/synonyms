@@ -414,6 +414,17 @@ function synonyms_features_api() {
 }
 
 /**
+ * Implements hook_modules_disabled().
+ */
+function synonyms_modules_disabled($modules) {
+  foreach ($modules as $module) {
+    db_delete('synonyms_settings')
+      ->condition('provider', db_like($module) . '%', 'LIKE')
+      ->execute();
+  }
+}
+
+/**
  * Form element validate handler.
  *
  * Handle validation for taxonomy term synonym-friendly autocomplete element.
@@ -884,17 +895,20 @@ function synonyms_views_api() {
  *     applies
  *   - bundle: (string) Bundle name to which this behavior implementation
  *     applies
- *   - provider: (string) Name of this synonyms provider
- *   - label: (string) Human friendly name of this synonyms provider
+ *   - provider: (string) Machine name of this synonyms behavior implementation
+ *   - label: (string) Human friendly name of this synonyms behavior
+ *     implementation
  *   - class: (string) Name of PHP class that implements behavior interface
  *   - settings: (mixed) Behavior settings, its internal structure depends on
  *     the type of behavior. If this value is NULL, it means the behavior
- *     implementation is currently disabled for this synonyms provider
- *   - object: (SynonymsBehavior) If the synonyms provider is enabled for this
- *     behavior, this property will contain a fully initialized object that
+ *     implementation is currently disabled
+ *   - object: (SynonymsBehavior) If the synonyms behavior implementation is
+ *     enabled, this property will contain a fully initialized object that
  *     corresponds to this behavior implementation. This object is ready for
  *     use: to query for synonyms or invoke any other methods behavior interface
  *     declares
+ *   - module: (string) Name of the module that provides this synonyms behavior
+ *     implementation
  */
 function synonyms_behavior_get($behavior, $entity_type, $bundle, $only_enabled = FALSE) {
   $behavior_implementations = array();
@@ -918,7 +932,7 @@ function synonyms_behavior_get($behavior, $entity_type, $bundle, $only_enabled =
 
   if (!$only_enabled) {
     foreach (synonyms_bundle_normalize($entity_type, $bundle) as $bundle_name) {
-      foreach (synonyms_providers($entity_type, $bundle_name, $behavior) as $provider_info) {
+      foreach (synonyms_behavior_implementation_info($entity_type, $bundle_name, $behavior) as $provider_info) {
         if (isset($enabled_behavior_implementations[$bundle_name][$provider_info['provider']])) {
           $provider_info['settings_serialized'] = $enabled_behavior_implementations[$bundle_name][$provider_info['provider']]['settings_serialized'];
         }
@@ -989,32 +1003,36 @@ function synonyms_behaviors() {
 }
 
 /**
- * Collect info on available synonyms providers.
+ * Collect info on available synonyms behavior implementations.
  *
  * @param string $entity_type
- *   Entity type whose available synonyms providers to collect
+ *   Entity type whose available synonyms behavior implementations to collect
  * @param string $bundle
- *   Bundle whose available synonyms providers to collect
+ *   Bundle whose available synonyms behavior implementations to collect
  * @param string $behavior
- *   Name of behavior whose available synonyms providers to collect
+ *   Name of behavior whose available synonyms behavior implementations to
+ *   collect
  *
  * @return array
- *   Array of available synonyms providers. Each synonym provider will be an
- *   array with the following structure:
- *   - provider: (string) Machine name of the synonyms provider
- *   - label: (string) Human name of the synonyms provider
+ *   Array of available synonyms behavior implementations. Each synonym behavior
+ *   implementation will be an array with the following structure:
+ *   - provider: (string) Machine name of the synonyms behavior implementation
+ *   - label: (string) Human name of the synonyms behavior implementation
  *   - class: (string) Name of PHP class that implements behavior interface
  *     which is stated in cTools behavior plugin definition
  *   - entity_type: (string) Entity type that corresponds to this synonyms
- *     provider
- *   - bundle: (string) Bundle that corresponds to this synonyms provider
+ *     behavior implementation
+ *   - bundle: (string) Bundle that corresponds to this synonyms behavior
+ *     implementation
  *   - behavior: (string) Name of behavior that corresponds to this synonyms
- *     provider
+ *     behavior implementation
+ *   - module: (string) Name of the module that provides this synonyms behavior
+ *     implementation
  */
-function synonyms_providers($entity_type, $bundle, $behavior) {
+function synonyms_behavior_implementation_info($entity_type, $bundle, $behavior) {
   $providers = array();
-  foreach (module_implements('synonyms_provider_info') as $module) {
-    foreach (module_invoke($module, 'synonyms_provider_info', $entity_type, $bundle, $behavior) as $provider) {
+  foreach (module_implements('synonyms_behavior_implementation_info') as $module) {
+    foreach (module_invoke($module, 'synonyms_behavior_implementation_info', $entity_type, $bundle, $behavior) as $provider) {
       $provider['entity_type'] = $entity_type;
       $provider['behavior'] = $behavior;
       $provider['bundle'] = $bundle;
@@ -1034,8 +1052,7 @@ function synonyms_providers($entity_type, $bundle, $behavior) {
  *   - entity_type: (string) Entity type that corresponds to this behavior
  *     implementation
  *   - bundle: (string) Bundle that corresponds to this behavior implementation
- *   - provider: (string) Synonyms provider that corresponds to this behavior
- *     implementation
+ *   - provider: (string) Machine name of this synonyms behavior implementation
  *   - behavior: (string) name of the synonyms behavior to which these settings
  *     apply
  *   - settings_serialized: (string) serialized content of the settings
@@ -1049,7 +1066,7 @@ function synonyms_behavior_settings_unpack($behavior_implementations) {
 
   foreach ($behavior_implementations as &$behavior_implementation) {
     if (!isset($cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']])) {
-      $cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']] = synonyms_providers($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
+      $cache[$behavior_implementation['behavior']][$behavior_implementation['entity_type']][$behavior_implementation['bundle']] = synonyms_behavior_implementation_info($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
     }
 
     // Behavior implementation info may be not available in some rare extreme
@@ -1410,8 +1427,8 @@ function synonyms_entity_type_load($entity_type) {
   $bundles = synonyms_bundle_normalize($entity_type, array());
   foreach (synonyms_behaviors() as $behavior => $behavior_definition) {
     foreach ($bundles as $bundle) {
-      $providers = synonyms_providers($entity_type, $bundle, $behavior);
-      if (!empty($providers)) {
+      $behavior_implementations = synonyms_behavior_implementation_info($entity_type, $bundle, $behavior);
+      if (!empty($behavior_implementations)) {
         return $entity_type;
       }
     }
@@ -1433,8 +1450,8 @@ function synonyms_entity_type_load($entity_type) {
  */
 function synonyms_bundle_load($bundle, $entity_type) {
   foreach (synonyms_behaviors() as $behavior => $behavior_definition) {
-    $providers = synonyms_providers($entity_type, $bundle, $behavior);
-    if (!empty($providers)) {
+    $behavior_implementations = synonyms_behavior_implementation_info($entity_type, $bundle, $behavior);
+    if (!empty($behavior_implementations)) {
       return $bundle;
     }
   }

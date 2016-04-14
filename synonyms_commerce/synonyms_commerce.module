@@ -6,20 +6,14 @@
  */
 
 /**
- * Implements hook_synonyms_provider_field_provider_info().
+ * Implements hook_synonyms_provider_field_behavior_implementation_info().
  */
-function synonyms_commerce_synonyms_provider_field_provider_info($behavior) {
+function synonyms_commerce_synonyms_provider_field_behavior_implementation_info($behavior) {
   switch ($behavior) {
     case 'select':
     case 'autocomplete':
       return array(
         'commerce_product_reference' => 'CommerceProductReferenceSynonymsBehavior',
-      );
-      break;
-
-    case 'search':
-      return array(
-        'commerce_product_reference' => 'SearchCommerceProductReferenceSynonymsBehavior',
       );
       break;
   }

@@ -6,34 +6,38 @@
  */
 
 /**
- * Collect info about available synonyms providers.
+ * Collect info about available synonyms behavior implementations.
  *
- * If you module ships a synonyms provider you probably want to implement this
- * hook. However, exercise caution, if your synonyms provider is a field-based
- * one, you might be better off implementing
- * hook_synonyms_field_provider_info().
+ * If your module ships a synonyms behavior implementation you probably want to
+ * implement this hook. However, exercise caution, if your synonyms behavior
+ * implementation is a field-based one, you might be better off implementing
+ * hook_synonyms_field_behavior_implementation_info().
  *
  * @param string $entity_type
- *   Entity type whose synonyms providers are requested
+ *   Entity type whose synonyms behavior implementations are requested
  * @param string $bundle
- *   Bundle name whose synonyms providers are requested
+ *   Bundle name whose synonyms behavior implementations are requested
  * @param string $behavior
- *   Behavior name whose synonyms providers are requested
+ *   Behavior name whose implementations are requested
  *
  * @return array
- *   Array of information about synonyms providers your module exposes. Each
- *   sub array will represent a single synonyms provider and should have the
- *   following structure:
- *   - provider: (string) machine name of your synonyms provider. Prefix it with
- *     your module name to make sure no name collisions happen
- *   - label: (string) Human friendly translated name of your synonyms provider
+ *   Array of information about synonyms behavior implementations your module
+ *   exposes. Each sub array will represent a single synonyms behavior
+ *   implementation and should have the following structure:
+ *   - provider: (string) machine name of your synonyms behavior implementation.
+ *     Prefix it with your module name to make sure no name collision happens.
+ *     Also, provider must be unique within the namespace of behavior, entity
+ *     type and bundle. Basically, this is what distinguishes one behavior
+ *     implementation from another
+ *   - label: (string) Human friendly translated name of your synonyms behavior
+ *     implementation
  *   - class: (string) Name of PHP class that implements synonyms behavior
  *     interface, which is stated in synonyms behavior definition. This class
- *     will do all the synonyms providing work. This hook serves pure
- *     declarative function to map entity types, bundles with their synonym
- *     providers
+ *     will do all the synonyms work. This hook serves pure declarative function
+ *     to map entity types, bundles with their synonym behavior implementations
+ *     whereas real "synonyms-related" work is implemented in your class
  */
-function hook_synonyms_provider_info($entity_type, $bundle, $behavior) {
+function hook_synonyms_behavior_implementation_info($entity_type, $bundle, $behavior) {
   $providers = array();
 
   switch ($entity_type) {
@@ -43,9 +47,9 @@ function hook_synonyms_provider_info($entity_type, $bundle, $behavior) {
           switch ($behavior) {
             case 'behavior_i_want':
               $providers[] = array(
-                'provider' => 'my_very_special_synonyms_provider_machine_name',
-                'label' => t('This is human friendly name of my synonyms provider. Put something meaningful here'),
-                'class' => 'MySynonymsProviderSynonymsBehavior',
+                'provider' => 'my_module_synonyms_behavior_implementation_machine_name',
+                'label' => t('This is human friendly name of my synonyms behavior implementation. Put something meaningful here'),
+                'class' => 'MySynonymsSynonymsBehavior',
               );
               break;
           }
@@ -59,12 +63,12 @@ function hook_synonyms_provider_info($entity_type, $bundle, $behavior) {
 }
 
 /**
- * Example of synonyms provider class.
+ * Example of synonyms behavior implementation class.
  *
  * You are encouraged to extend AbstractSynonymsBehavior class as that one
  * contains a few heuristic that make your implementation easier.
  */
-class MySynonymsProviderSynonymsBehavior extends AbstractSynonymsBehavior implements AutocompleteSynonymsBehavior {
+class MySynonymsSynonymsBehavior extends AbstractSynonymsBehavior implements AutocompleteSynonymsBehavior {
 
   /**
    * Extract synonyms from an entity within a specific behavior implementation.

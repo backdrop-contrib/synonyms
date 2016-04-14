@@ -1,4 +1,4 @@
-name = Field Synonyms Provier
+name = Field Synonyms Provider
 description = "Provides synonyms from entity fields."
 package = Synonyms
 core = 7.x

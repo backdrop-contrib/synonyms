@@ -800,7 +800,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     if (!$behavior_implementation) {
       $behavior_implementation = $this->behavior_implementation;
     }
-    $provider = synonyms_providers($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
+    $provider = synonyms_behavior_implementation_info($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
     $provider = $provider[$behavior_implementation['provider']];
     return format_string($behavior_implementation['settings']['wording'], array(
       '@synonym' => $synonym,
@@ -1080,7 +1080,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
       $key = $this->synonymSelectKey($v['entity'], $v['synonym']);
       $label = entity_label($this->behavior_implementation['entity_type'], $v['entity']);
       if ($v['synonym']) {
-        $provider = synonyms_providers($this->behavior_implementation['entity_type'], $this->behavior_implementation['bundle'], $this->behavior_implementation['behavior']);
+        $provider = synonyms_behavior_implementation_info($this->behavior_implementation['entity_type'], $this->behavior_implementation['bundle'], $this->behavior_implementation['behavior']);
         $provider = $provider[$this->behavior_implementation['provider']];
 
         $label = format_string($this->behavior_implementation['settings']['wording'], array(

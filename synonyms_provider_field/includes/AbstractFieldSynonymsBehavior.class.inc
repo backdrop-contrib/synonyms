@@ -52,10 +52,7 @@ abstract class AbstractFieldSynonymsBehavior extends AbstractSynonymsBehavior {
    */
   protected function entityItems($entity) {
     $items = field_get_items($this->instance['entity_type'], $entity, $this->field['field_name']);
-    if (is_array($items)) {
-      return $items;
-    }
-    return array();
+    return is_array($items) ? $items : array();
   }
 
   /**

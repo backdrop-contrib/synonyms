@@ -23,10 +23,22 @@ class SynonymsProviderPropertyWebTestCase extends SynonymsWebTestCase {
 
   public function setUp($modules = array()) {
     $this->behavior_implementation['behavior'] = 'autocomplete';
-    $this->behavior_implementation['provider'] = synonyms_provider_property_provider_name('tid');
+    $this->behavior_implementation['provider'] = 'whatever';
 
     array_unshift($modules, 'synonyms_provider_property');
     parent::setUp($modules);
+
+    // We can't initialize this before parent::setUp() because we depend on
+    // synonyms_provider_property_provider_name() function.
+    synonyms_behavior_implementation_delete($this->behavior_implementation);
+    $this->behavior_implementation['provider'] = synonyms_provider_property_provider_name('tid');
+    synonyms_behavior_implementation_save($this->behavior_implementation);
+    foreach (synonyms_behavior_get($this->behavior_implementation['behavior'], $this->behavior_implementation['entity_type'], $this->behavior_implementation['bundle'], TRUE) as $behavior_implementation) {
+      if ($behavior_implementation['provider'] == $this->behavior_implementation['provider']) {
+        $this->behavior_implementation = $behavior_implementation;
+        break;
+      }
+    }
   }
 
   /**
