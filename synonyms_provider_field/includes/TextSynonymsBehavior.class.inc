@@ -55,7 +55,7 @@ class TextSynonymsBehavior extends AbstractFieldSynonymsBehavior implements Auto
     $table = reset($table);
     $column = $this->field['storage']['details']['sql'][FIELD_LOAD_CURRENT][$table]['value'];
 
-    $this->synonymsFindProcessCondition($condition, $column);
+    $this->synonymsFindProcessCondition($condition, $column, 'entity_id');
 
     $query = db_select($table);
     $query->fields($table, array('entity_id'));

@@ -82,7 +82,7 @@ class TaxonomySynonymsBehavior extends AbstractFieldSynonymsBehavior implements 
     $query->condition('field.entity_type', $this->instance['entity_type']);
     $query->condition('field.bundle', $this->instance['bundle']);
 
-    $this->synonymsFindProcessCondition($condition, $term_alias . '.name');
+    $this->synonymsFindProcessCondition($condition, $term_alias . '.name', 'field.entity_id');
     $query->condition($condition);
     return $query->execute();
   }

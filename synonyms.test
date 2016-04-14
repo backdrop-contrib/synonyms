@@ -369,9 +369,16 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     $this->behavior_implementation['behavior'] = 'autocomplete';
     $this->behavior_implementation['settings'] = array(
       'wording' => '@synonym @field_name @entity',
-    )
-    ;
+    );
+    $modules[] = 'synonyms_provider_property';
     parent::setUp($modules);
+
+    // We'll also enable the ID property to be source of synonyms so we can
+    // extra test multiple providers at the same time.
+    $behavior_implementation = $this->behavior_implementation;
+    $entity_info = entity_get_info($behavior_implementation['entity_type']);
+    $behavior_implementation['provider'] = synonyms_provider_property_provider_name($entity_info['entity keys']['id']);
+    synonyms_behavior_implementation_save($behavior_implementation);
 
     // Creating a test content type.
     $this->drupalPost('admin/structure/types/add', array(

@@ -79,7 +79,7 @@ class EntityReferenceSynonymsBehavior extends AbstractFieldSynonymsBehavior impl
     $query->condition('field.entity_type', $this->instance['entity_type']);
     $query->condition('field.bundle', $this->instance['bundle']);
 
-    $this->synonymsFindProcessCondition($condition, $target_entity_alias . '.' . $target_entity_type_info['entity keys']['label']);
+    $this->synonymsFindProcessCondition($condition, $target_entity_alias . '.' . $target_entity_type_info['entity keys']['label'], 'field.entity_id');
     $query->condition($condition);
     return $query->execute();
   }

@@ -119,10 +119,15 @@ class MySynonymsProviderSynonymsBehavior extends AbstractSynonymsBehavior implem
    * synonyms.
    *
    * @param QueryConditionInterface $condition
-   *   Condition that defines what to search for. It may contain a placeholder
-   *   of AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER which you should
-   *   replace by the column name where the synonyms data for your field is
-   *   stored in plain text. For it to do, you may extend the
+   *   Condition that defines what to search for. Apart from normal SQL
+   *   conditions as known in Drupal, it may contain the following placeholders:
+   *   - AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER: to denote
+   *     synonyms column which you should replace with the actual column name
+   *     where the synonyms data for your provider is stored in plain text.
+   *   - AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER: to denote
+   *     column that holds entity ID. You are supposed to replace this placeholder
+   *     with actual column name that holds entity ID in your case.
+   *   For ease of work with these placeholders, you may extend the
    *   AbstractSynonymsBehavior class and then just invoke the
    *   AbstractSynonymsBehavior->synonymsFindProcessCondition() method, so you
    *   won't have to worry much about it
@@ -143,8 +148,23 @@ class MySynonymsProviderSynonymsBehavior extends AbstractSynonymsBehavior implem
     $query = db_select('my_synonyms_storage_table', 'table');
     $query->addField('table', 'entity_id', 'entity_id');
     $query->addField('table', 'synonym', 'synonym');
-    $this->synonymsFindProcessCondition($condition, 'table.synonym');
+    $this->synonymsFindProcessCondition($condition, 'table.synonym', 'table.entity_id');
     $query->condition($condition);
     return $query->execute();
+  }
+
+  /**
+   * Collect info on features pipe during invocation of hook_features_export().
+   *
+   * If your synonyms provider depends on some other features components, this
+   * method should return them.
+   *
+   * @return array
+   *   Array of features pipe as per hook_features_export() specification
+   */
+  public function featuresExportPipe() {
+    $pipe = parent::featuresExportPipe();
+    // Add any additional features components your provider depends on.
+    return $pipe;
   }
 }

@@ -31,6 +31,15 @@ abstract class AbstractFieldSynonymsBehavior extends AbstractSynonymsBehavior {
     $this->instance = field_info_instance($behavior_implementation['entity_type'], $this->field['field_name'], $behavior_implementation['bundle']);
   }
 
+  public function featuresExportPipe() {
+    $pipe = parent::featuresExportPipe();
+
+    // We include the Features component for the underlying field on which this
+    // synonyms provider is built.
+    $pipe['field'][] = implode('-', array($this->behavior_implementation['entity_type'], $this->behavior_implementation['bundle'], $this->field['field_name']));
+    return $pipe;
+  }
+
   /**
    * Retrieve items of the underlying field in this behavior implementation.
    *

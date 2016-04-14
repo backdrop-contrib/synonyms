@@ -126,17 +126,17 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
       $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $bundle, TRUE);
       foreach ($behavior_implementations as $implementation) {
         $condition = db_and();
-        $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like($tag_last) . '%', 'LIKE');
+        $condition->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like($tag_last) . '%', 'LIKE');
 
         if (!empty($tags_typed_tids)) {
-          $condition->condition('entity_id', $tags_typed_tids, 'NOT IN');
+          $condition->condition(AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER, $tags_typed_tids, 'NOT IN');
         }
         if ($suggest_only_unique && !empty($tags_return)) {
           $tmp = array();
           foreach ($tags_return as $tag_return) {
             $tmp[] = $tag_return['tid'];
           }
-          $condition->condition('entity_id', $tmp, 'NOT IN');
+          $condition->condition(AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER, $tmp, 'NOT IN');
         }
 
         $new_tids = array();
@@ -265,17 +265,17 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
       $behavior_implementations = synonyms_behavior_get('autocomplete', $field['settings']['target_type'], synonyms_field_target_bundles($field), TRUE);
       foreach ($behavior_implementations as $implementation) {
         $condition = db_and();
-        $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, '%' . db_like($tag_last) . '%', 'LIKE');
+        $condition->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like($tag_last) . '%', 'LIKE');
 
         if (!empty($tags_typed_entity_ids)) {
-          $condition->condition('entity_id', $tags_typed_entity_ids, 'NOT IN');
+          $condition->condition(AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER, $tags_typed_entity_ids, 'NOT IN');
         }
         if ($suggest_only_unique && !empty($matches)) {
           $tmp = array();
           foreach ($matches as $match) {
             $tmp[] = $match['target_id'];
           }
-          $condition->condition('entity_id', $tmp, 'NOT IN');
+          $condition->condition(AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER, $tmp, 'NOT IN');
         }
 
         $new_target_ids = array();

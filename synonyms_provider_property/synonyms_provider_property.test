@@ -50,20 +50,20 @@ class SynonymsProviderPropertyWebTestCase extends SynonymsWebTestCase {
     $this->assertIdentical($synonyms, array($term->tid), $this->behavior_implementation['class'] . '::extractSynonyms() passed.');
 
     // Test synonymsFind() method.
-    $condition = db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, 0);
+    $condition = db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, 0);
     $this->assertSynonymsFind($condition, array(), 'on non-existing synonym');
 
-    $condition = db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term->tid);
+    $condition = db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $term->tid);
     $this->assertSynonymsFind($condition, array(array('entity_id' => $term->tid, 'synonym' => $term->tid)), 'on a synonym');
 
     $condition = db_and()
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term->tid)
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term2->tid);
+      ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $term->tid)
+      ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $term2->tid);
     $this->assertSynonymsFind($condition, array(), 'on a synonym AND on another synonym');
 
     $condition = db_or()
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term->tid)
-      ->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term2->tid);
+      ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $term->tid)
+      ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $term2->tid);
     $this->assertSynonymsFind($condition, array(array('entity_id' => $term->tid, 'synonym' => $term->tid), array('entity_id' => $term2->tid, 'synonym' => $term2->tid)), 'on a synonym OR another synonym');
   }
 

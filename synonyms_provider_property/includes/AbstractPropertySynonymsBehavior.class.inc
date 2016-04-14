@@ -49,7 +49,7 @@ class AbstractPropertySynonymsBehavior extends AbstractSynonymsBehavior implemen
     $query->addField('base', $this->entity_info['entity keys']['id'], 'entity_id');
     $query->addField('base', $this->property, 'synonym');
 
-    $this->synonymsFindProcessCondition($condition, 'base.' . $this->property);
+    $this->synonymsFindProcessCondition($condition, 'base.' . $this->property, 'base.' . $this->entity_info['entity keys']['id']);
     $query->condition($condition);
     return $query->execute();
   }

@@ -434,7 +434,7 @@ function synonyms_autocomplete_taxonomy_term_validate($element, &$form_state) {
       foreach ($field['settings']['allowed_values'] as $tree) {
         $behavior_implementations = synonyms_behavior_get('autocomplete', 'taxonomy_term', $tree['vocabulary'], TRUE);
         foreach ($behavior_implementations as $behavior_implementation) {
-          $synonyms = $behavior_implementation['object']->synonymsFind(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $term['name']));
+          $synonyms = $behavior_implementation['object']->synonymsFind(db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $term['name']));
           foreach ($synonyms as $synonym) {
             $synonym_tid = $synonym->entity_id;
             break(2);
@@ -484,10 +484,13 @@ function synonyms_autocomplete_entity_validate($element, &$form_state) {
       $behavior_implementations = synonyms_behavior_get('autocomplete', $field['settings']['target_type'], synonyms_field_target_bundles($field), TRUE);
       foreach ($behavior_implementations as $implementation) {
         $condition = db_and();
-        $condition->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $input, 'IN');
+        $condition->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $input, 'IN');
         foreach ($implementation['object']->synonymsFind($condition) as $synonym) {
-          unset($input[drupal_strtolower($synonym->synonym)]);
           $value[] = $synonym->entity_id;
+          unset($input[drupal_strtolower($synonym->synonym)]);
+          if (empty($input)) {
+            break(2);
+          }
         }
       }
     }
@@ -534,7 +537,7 @@ function synonyms_get_entity_by_synonym($entity_type, $name, $bundle = NULL) {
     }
   }
 
-  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $name), $entity_type, $bundle);
+  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $name), $entity_type, $bundle);
   if (!empty($synonyms)) {
     return reset($synonyms)->entity_id;
   }
@@ -581,7 +584,7 @@ function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
   // We have failed to find a term with the provided $name. So let's search now
   // among the term synonyms.
   $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
-  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsBehavior::COLUMN_PLACEHOLDER, $name), 'taxonomy_term', $bundle);
+  $synonyms = synonyms_synonyms_find(db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $name), 'taxonomy_term', $bundle);
   foreach ($synonyms as $synonym) {
     if (!$parent || synonyms_taxonomy_term_is_child_of($synonym->entity_id, $parent)) {
       // TODO: similarly here, as above, we could have more than 1 match, but
@@ -933,7 +936,8 @@ function synonyms_behavior_get($behavior, $entity_type, $bundle, $only_enabled =
  * implementations for a specific entity_type and a bundle.
  *
  * @param string $entity_type
- *   Entity type whose enabled behavior implementations should be loaded
+ *   Optionally filter by entity type whose enabled behavior implementations
+ *   should be loaded
  * @param string|array $bundle
  *   Optionally filter by bundle whose enabled behavior implementations should
  *   be loaded. You can supply here string - single bundle name or an array of
@@ -942,19 +946,27 @@ function synonyms_behavior_get($behavior, $entity_type, $bundle, $only_enabled =
  * @param string $provider
  *   Optional filter to only return enabled synonyms behavior implementations of
  *   a specific provider
+ * @param string $behavior
+ *   Optional filter to only return enabled synonyms behavior implementations of
+ *   a specific behavior
  *
  * @return array
  *   Array of enabled behavior implementations for a provided entity type and a
  *   bundle. Return structure of this function is identical to the return
  *   structure of synonyms_behavior_get()
  */
-function synonyms_behavior_get_all_enabled($entity_type, $bundle = array(), $provider = NULL) {
+function synonyms_behavior_get_all_enabled($entity_type = NULL, $bundle = array(), $provider = NULL, $behavior = NULL) {
   $query = db_select('synonyms_settings', 's');
   $query->fields('s');
-  $query->condition('entity_type', $entity_type);
-  $query->condition('bundle', synonyms_bundle_normalize($entity_type, $bundle));
+  if ($entity_type) {
+    $query->condition('entity_type', $entity_type);
+    $query->condition('bundle', synonyms_bundle_normalize($entity_type, $bundle));
+  }
   if ($provider) {
     $query->condition('provider', $provider);
+  }
+  if ($behavior) {
+    $query->condition('behavior', $behavior);
   }
 
   $result = $query->execute();
@@ -1001,11 +1013,14 @@ function synonyms_behaviors() {
  */
 function synonyms_providers($entity_type, $bundle, $behavior) {
   $providers = array();
-  foreach (module_invoke_all('synonyms_provider_info', $entity_type, $bundle, $behavior) as $provider) {
-    $provider['entity_type'] = $entity_type;
-    $provider['behavior'] = $behavior;
-    $provider['bundle'] = $bundle;
-    $providers[$provider['provider']] = $provider;
+  foreach (module_implements('synonyms_provider_info') as $module) {
+    foreach (module_invoke($module, 'synonyms_provider_info', $entity_type, $bundle, $behavior) as $provider) {
+      $provider['entity_type'] = $entity_type;
+      $provider['behavior'] = $behavior;
+      $provider['bundle'] = $bundle;
+      $provider['module'] = $module;
+      $providers[$provider['provider']] = $provider;
+    }
   }
   return $providers;
 }

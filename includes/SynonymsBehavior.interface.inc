@@ -54,10 +54,15 @@ interface SynonymsBehavior {
    * synonyms.
    *
    * @param QueryConditionInterface $condition
-   *   Condition that defines what to search for. It may contain a placeholder
-   *   of AbstractSynonymsSynonymsBehavior::COLUMN_PLACEHOLDER which you should
-   *   replace by the column name where the synonyms data for your field is
-   *   stored in plain text. For it to do, you may extend the
+   *   Condition that defines what to search for. Apart from normal SQL
+   *   conditions as known in Drupal, it may contain the following placeholders:
+   *   - AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER: to denote
+   *     synonyms column which you should replace with the actual column name
+   *     where the synonyms data for your provider is stored in plain text.
+   *   - AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER: to denote
+   *     column that holds entity ID. You are supposed to replace this placeholder
+   *     with actual column name that holds entity ID in your case.
+   *   For ease of work with these placeholders, you may extend the
    *   AbstractSynonymsBehavior class and then just invoke the
    *   AbstractSynonymsBehavior->synonymsFindProcessCondition() method, so you
    *   won't have to worry much about it
@@ -71,6 +76,17 @@ interface SynonymsBehavior {
    *   - entity_id: (int) ID of the entity to which the found synonym belongs
    */
   public function synonymsFind(QueryConditionInterface $condition);
+
+  /**
+   * Collect info on features pipe during invocation of hook_features_export().
+   *
+   * If your synonyms provider depends on some other features components, this
+   * method should return them.
+   *
+   * @return array
+   *   Array of features pipe as per hook_features_export() specification
+   */
+  public function featuresExportPipe();
 }
 
 /**
@@ -88,7 +104,14 @@ abstract class AbstractSynonymsBehavior implements SynonymsBehavior {
    *
    * @var string
    */
-  const COLUMN_PLACEHOLDER = '***COLUMN***';
+  const COLUMN_SYNONYM_PLACEHOLDER = '***COLUMN***';
+
+  /**
+   * Constant which denotes placeholder of an entity ID column.
+   *
+   * @var string
+   */
+  const COLUMN_ENTITY_ID_PLACEHOLDER = '***ENTITY_ID***';
 
   /**
    * Behavior implementation on which this class was initialized.
@@ -101,6 +124,10 @@ abstract class AbstractSynonymsBehavior implements SynonymsBehavior {
     $this->behavior_implementation = $behavior_implementation;
   }
 
+  public function featuresExportPipe() {
+    return array();
+  }
+
   /**
    * Process condition in 'synonymsFind' method.
    *
@@ -109,19 +136,25 @@ abstract class AbstractSynonymsBehavior implements SynonymsBehavior {
    *
    * @param QueryConditionInterface $condition
    *   Condition that should be processed
-   * @param string $column
+   * @param string $column_synonym
    *   Real name of the synonym column
+   * @param string $column_entity_id
+   *   Real name of the entity ID column
    */
-  protected function synonymsFindProcessCondition(QueryConditionInterface $condition, $column) {
+  protected function synonymsFindProcessCondition(QueryConditionInterface $condition, $column_synonym, $column_entity_id) {
     $condition_array = &$condition->conditions();
     foreach ($condition_array as &$v) {
       if (is_array($v) && isset($v['field'])) {
         if ($v['field'] instanceof QueryConditionInterface) {
           // Recursively process this condition too.
-          $this->synonymsFindProcessCondition($v['field'], $column);
+          $this->synonymsFindProcessCondition($v['field'], $column_synonym, $column_entity_id);
         }
         else {
-          $v['field'] = str_replace(self::COLUMN_PLACEHOLDER, $column, $v['field']);
+          $replace = array(
+            self::COLUMN_SYNONYM_PLACEHOLDER => $column_synonym,
+            self::COLUMN_ENTITY_ID_PLACEHOLDER => $column_entity_id,
+          );
+          $v['field'] = str_replace(array_keys($replace), array_values($replace), $v['field']);
         }
       }
     }
