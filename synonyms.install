@@ -265,7 +265,7 @@ function synonyms_update_7103() {
     'default' => '',
   ));
 
-  db_query('UPDATE s FROM {synonyms_settings} s INNER JOIN {field_config_instance} i ON i.id = s.instance_id SET s.entity_type = i.entity_type, s.bundle = i.bundle, s.provider = i.field_name');
+  db_query('UPDATE {synonyms_settings} s INNER JOIN {field_config_instance} i ON i.id = s.instance_id SET s.entity_type = i.entity_type, s.bundle = i.bundle, s.provider = i.field_name');
 
   db_drop_field('synonyms_settings', 'instance_id');
 
