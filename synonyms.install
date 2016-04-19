@@ -276,6 +276,9 @@ function synonyms_update_7103() {
 
   $alter_behaviors = array('select', 'autocomplete');
   foreach (synonyms_behavior_get_all_enabled() as $behavior_implementation) {
+    db_delete('synonyms_settings')
+      ->condition('provider', $behavior_implementation['provider'])
+      ->execute();
     $behavior_implementation['provider'] = synonyms_provider_field_provider_name(field_info_field($behavior_implementation['provider']));
     if (in_array($behavior_implementation['behavior'], $alter_behaviors)) {
       $behavior_implementation['settings']['wording'] = str_replace('@term', '@entity', $behavior_implementation['settings']['wording']);
