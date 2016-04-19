@@ -228,21 +228,59 @@ function synonyms_update_7102() {
  *
  * Namely, the following happens:
  * - general "synonyms" behavior gets removed as too ambiguous.
+ * - alter schema of synonyms table
  * - "select" and "autocomplete" behaviors undergo change in settings ("@term"
  *   placeholder is replaced with "@entity" one)
  * - taxonomy term reference widgets get renamed to their new names.
+ * - all enabled behavior implementations are renamed to their new names in
+ *   order to support field- and property-based synonyms implementations
  */
 function synonyms_update_7103() {
   db_delete('synonyms_settings')
     ->condition('behavior', 'synonyms')
     ->execute();
 
+  db_drop_index('synonyms_settings', 'behavior');
+  db_drop_unique_key('synonyms_settings', 'instance_behavior');
+
+  db_add_field('synonyms_settings', 'entity_type', array(
+    'description' => 'Entity type whose behavior implementation is stored in this row.',
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => TRUE,
+    'default' => '',
+  ));
+  db_add_field('synonyms_settings', 'bundle', array(
+    'description' => 'Bundle name whose behavior implementation is stored in this row.',
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => TRUE,
+    'default' => '',
+  ));
+  db_add_field('synonyms_settings', 'provider', array(
+    'description' => 'Provider name whose behavior implementation is stored in this row.',
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => TRUE,
+    'default' => '',
+  ));
+
+  db_query('UPDATE s FROM {synonyms_settings} s INNER JOIN {field_config_instance} i ON i.id = s.instance_id SET s.entity_type = i.entity_type, s.bundle = i.bundle, s.provider = i.field_name');
+
+  db_drop_field('synonyms_settings', 'instance_id');
+
+  db_add_unique_key('synonyms_settings', 'behavior_implementation', array('behavior', 'entity_type', 'bundle', 'provider'));
+  db_add_unique_key('synonyms_settings', 'all_enabled', array('entity_type', 'bundle', 'provider', 'behavior'));
+
+  module_enable(array('synonyms_provider_field'));
+
   $alter_behaviors = array('select', 'autocomplete');
-  foreach ($alter_behaviors as $behavior) {
-    foreach (synonyms_behavior_get($behavior, NULL, NULL, TRUE) as $behavior_implementation) {
+  foreach (synonyms_behavior_get_all_enabled() as $behavior_implementation) {
+    $behavior_implementation['provider'] = synonyms_provider_field_provider_name(field_info_field($behavior_implementation['provider']));
+    if (in_array($behavior_implementation['behavior'], $alter_behaviors)) {
       $behavior_implementation['settings']['wording'] = str_replace('@term', '@entity', $behavior_implementation['settings']['wording']);
-      synonyms_behavior_settings_save($behavior_implementation);
     }
+    synonyms_behavior_implementation_save($behavior_implementation);
   }
 
   // Keys are the old widget names, whereas corresponding values are the new
