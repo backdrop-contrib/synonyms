@@ -231,7 +231,7 @@ function synonyms_update_7102() {
  * - alter schema of synonyms table
  * - "select" and "autocomplete" behaviors undergo change in settings ("@term"
  *   placeholder is replaced with "@entity" one)
- * - taxonomy term reference widgets get renamed to their new names.
+ * - taxonomy term reference widgets get renamed to their new names
  * - all enabled behavior implementations are renamed to their new names in
  *   order to support field- and property-based synonyms implementations
  */

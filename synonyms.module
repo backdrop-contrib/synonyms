@@ -534,6 +534,15 @@ function synonyms_autocomplete_entity_validate($element, &$form_state) {
 function synonyms_get_entity_by_synonym($entity_type, $name, $bundle = NULL) {
   $name = trim($name);
   $entity_info = entity_get_info($entity_type);
+
+  // This is somewhat hacky, but it's the best we can do: user.module does not
+  // declare 'label' entity key on 'user' entity type, while there is clearly
+  // one: the 'name' column. In fact, entityreference.module does about the same
+  // thing in EntityReference_SelectionHandler_Generic_user class.
+  if ($entity_type == 'user') {
+    $entity_info['entity keys']['label'] = 'name';
+  }
+
   if (isset($entity_info['entity keys']['label'])) {
     $efq = new EntityFieldQuery();
     $efq->entityCondition('entity_type', $entity_type);
