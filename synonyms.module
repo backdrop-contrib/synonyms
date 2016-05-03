@@ -284,12 +284,7 @@ function synonyms_field_widget_settings_form($field, $instance) {
  * Implements hook_field_widget_form().
  */
 function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  $default_value = array();
-  $column = array_keys($field['columns']);
-  $column = reset($column);
-  foreach ($items as $item) {
-    $default_value[] = $item[$column];
-  }
+  $default_value = synonyms_select_default_value($field, $instance, $items);
 
   switch ($instance['widget']['type']) {
     case 'synonyms_autocomplete_taxonomy_term':
@@ -309,7 +304,7 @@ function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $la
           foreach ($target_entities as $target_entity_id => $target_entity) {
             $default_value_string[] = synonyms_autocomplete_escape($handler->getLabel($target_entity));
           }
-          $default_value_string = implode(', ', $default_value_string);
+          $default_value_string = drupal_implode_tags($default_value_string);
 
           $element_validate = array('synonyms_autocomplete_entity_validate');
           break;
@@ -1545,4 +1540,27 @@ function synonyms_bundle_normalize($entity_type, $bundle) {
     $bundle = array_keys(field_info_bundles($entity_type));
   }
   return $bundle;
+}
+
+/**
+ * Extract default value for a select widget of Synonyms module.
+ *
+ * @param array $field
+ *   Field definition array whose default value should be extracted
+ * @param array $instance
+ *   Field instance definition array whose default value should be extracted
+ * @param array $items
+ *   Array of items that should compose default value
+ *
+ * @return array
+ *   Array of default value that can be plugged in into a select widget
+ */
+function synonyms_select_default_value($field, $instance, $items) {
+  $default_value = array();
+  $column = array_keys($field['columns']);
+  $column = reset($column);
+  foreach ($items as $item) {
+    $default_value[] = $item[$column];
+  }
+  return $default_value;
 }

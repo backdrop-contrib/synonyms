@@ -8,8 +8,9 @@ module provides the following functionality:
 * support of synonyms through Entity properties. Entity properties stored in
   database (as opposed to being calculated on-the-fly) can be enabled as source
   of synonyms.
-* synonyms-friendly autocomplete and select widgets for taxonomy_term_reference
-  and entityreference fields
+* synonyms-friendly autocomplete and select widgets for taxonomy_term_reference.
+  entityreference, and commerce_product_reference (through Synonyms Commerce
+  submodule) fields.
 * integration with Drupal search functionality through Synonyms Search
   submodule. It enables searching content by synonyms of the terms that the
   content references. Synonyms Search submodule also integrates with Term Search
@@ -31,9 +32,9 @@ The Synonyms module requires the following modules:
 
 The Synonyms module integrates with (but does not require) the following
 modules:
-* Taxonomy module
-* Search module
-* Term Search module
+* Taxonomy
+* Search
+* Term Search
 * Entity Reference
 * Views
 * Commerce
@@ -43,13 +44,13 @@ modules:
 -- SUPPORTED SYNONYMS PROVIDERS --
 
 Module ships with ability to provide synonyms from the following locations:
-* "Text" field types
-* "Taxonomy Term Reference" field types
-* "Entity Reference" field types
-* "Commerce Product Reference" field types
-* "Number" field types
-* "Float" field types
-* "Decimal" field types
+* "Text" field type
+* "Taxonomy Term Reference" field type
+* "Entity Reference" field type
+* "Commerce Product Reference" field type
+* "Number" field type
+* "Float" field type
+* "Decimal" field type
 * Entity properties stored in database
 
 Worth mentioning here: this list is easily extended further by implementing new
@@ -76,9 +77,8 @@ recognized (other modules actually can extend this list):
   all synonyms that have this behavior enabled.
 
 Therefore, on the Synonyms configuration page you will see a table, where rows
-are synonym providers that can become synonyms and columns are these
-"synonym behaviors" and you decide what synonym behaviors to activate on what
-synonym providers.
+are synonym providers and columns are these "synonym behaviors" and you decide
+what synonym behaviors to activate on what synonym providers.
 
 -- INSTALLATION --
 

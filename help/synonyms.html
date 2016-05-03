@@ -26,13 +26,13 @@ There are few key concepts tightly integrated into Synonyms module that are wort
 As stated above, your synonyms can be stored in about any kind of storage. On the other hand, no matter where they are stored, they can be used in synonyms behaviors and treated equally independently of their origin. Such decoupling of synonyms storage and synonyms manipulation gives an extra degree of freedom. Synonyms module provides the following types of storage:
 
 <dt>Entity properties</dt>
-<dd>As long as your entity is stored in database, "Entity Property Synonyms Provider" submodule can extract them from there and give them good usage with synonyms behaviors. One good example would be to enable user's "email" field in "autocomplete" behavior, so users can find one another through autocomplete widget not only by username but by the email as well.</dd>
+<dd>As long as your entity property is stored in database, "Entity Property Synonyms Provider" submodule can extract them from there and give them good usage with synonyms behaviors. One good example would be to enable user's "email" field in "autocomplete" behavior, so users can find one another through autocomplete widget not only by username but by the email as well.</dd>
 <dt>Fields</dt>
 <dd>Many entities may have fields attached to them. "Field Synonyms Provider" submodule exposes field values as possible synonyms for the entities they belong to. Again, a good example would be to introduce a text field "Typos" and have it enabled in "autocomplete" behavior. This way you can cover at least the most common misspellings in your autocomplete widget.</dd>
 <dt>Anything else</dt>
 <dd>Synonyms module is built to be easily extended to cover custom needs of its client base. If you want to store your synonyms somewhere else, you can do so with a minimal required amount of code. Refer to <a href="&topic:synonyms/synonyms_behavior_implementation&">writing custom behavior implementation</a> for documentation on how to do it.</dd>
 
-<p>The "Field Synonyms Provider" submodule acts as a framework for exposes values from different field types into Synonyms core infrastructure. Out of the box this submodule covers the following field types:</p>
+<p>The "Field Synonyms Provider" submodule acts as a framework that exposes values from different field types into Synonyms core infrastructure. Out of the box this submodule covers the following field types:</p>
 <ul>
     <li>Text</li>
     <li>Term reference</li>
