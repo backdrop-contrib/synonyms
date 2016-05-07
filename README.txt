@@ -8,7 +8,7 @@ module provides the following functionality:
 * support of synonyms through Entity properties. Entity properties stored in
   database (as opposed to being calculated on-the-fly) can be enabled as source
   of synonyms.
-* synonyms-friendly autocomplete and select widgets for taxonomy_term_reference.
+* synonyms-friendly autocomplete and select widgets for taxonomy_term_reference,
   entityreference, and commerce_product_reference (through Synonyms Commerce
   submodule) fields.
 * integration with Drupal search functionality through Synonyms Search
