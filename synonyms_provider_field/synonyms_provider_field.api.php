@@ -5,7 +5,6 @@
  * Documentation for Synonyms Provider Field module.
  */
 
-
 /**
  * Collect info about available field-based synonym behavior implementations.
  *

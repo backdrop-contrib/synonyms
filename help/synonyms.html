@@ -30,7 +30,7 @@ As stated above, your synonyms can be stored in about any kind of storage. On th
 <dt>Fields</dt>
 <dd>Many entities may have fields attached to them. "Field Synonyms Provider" submodule exposes field values as possible synonyms for the entities they belong to. Again, a good example would be to introduce a text field "Typos" and have it enabled in "autocomplete" behavior. This way you can cover at least the most common misspellings in your autocomplete widget.</dd>
 <dt>Anything else</dt>
-<dd>Synonyms module is built to be easily extended to cover custom needs of its client base. If you want to store your synonyms somewhere else, you can do so with a minimal required amount of code. Refer to <a href="&topic:synonyms/synonyms_behavior_implementation&">writing custom behavior implementation</a> for documentation on how to do it.</dd>
+<dd>Synonyms module is built to be easily extended to cover custom needs of its client base. If you want to store your synonyms elsewhere, you can do so with a minimal required amount of code. Refer to <a href="&topic:synonyms/synonyms_behavior_implementation&">writing custom behavior implementation</a> for documentation on how to do it.</dd>
 
 <p>The "Field Synonyms Provider" submodule acts as a framework that exposes values from different field types into Synonyms core infrastructure. Out of the box this submodule covers the following field types:</p>
 <ul>
@@ -47,6 +47,6 @@ As stated above, your synonyms can be stored in about any kind of storage. On th
 
 <h2>Behavior Implementations</h2>
 
-<p>Behavior implementations connect behaviors to different types of synonyms storage. Out of the box Synonyms module provides enough behavior implementations to probably cover majority of use cases. As stated above, be it not the case, you can always extend coverage further through implementing custom behavior implemetnations in your own module. Feel free to study the hooks at synonyms.api.php file. Also, you may find it useful to read about <a href="&topic:synonyms/synonyms_behavior_implementation&">writing custom behavior implementation</a>.</p>
+<p>Behavior implementations connect behaviors to different types of synonyms storage. Out of the box Synonyms module provides enough behavior implementations to probably cover majority of use cases. As stated above, be it not the case, you can always extend coverage further through implementing custom behavior implementations in your own module. Feel free to study the hooks at synonyms.api.php file. Also, you may find it useful to read about <a href="&topic:synonyms/synonyms_behavior_implementation&">writing custom behavior implementation</a>.</p>
 
-<p>Lastly, you as a website admin can enable or disable certain behavior implementations to participate in certain behaviors. So you have full control over how things get set up in your website. Additionally, some behaviors may provide additional configs, for example, the autocomplete behavior will ask you with what wording to suggest an entity if it was matched by one of its synonyms.</p>
+<p>Lastly, you as a website admin can enable or disable certain behavior implementations to participate in certain behaviors. So you have full control over how things get set up in your website. Additionally, some behaviors may provide configs, for example, the autocomplete behavior will ask you with what wording to suggest an entity if it was matched by one of its synonyms.</p>

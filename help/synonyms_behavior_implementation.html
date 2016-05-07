@@ -4,7 +4,7 @@
 
 <p>Throughout writing your own synonyms behavior implementation you can always look into Synonyms module source code to get better understanding. You will find the behavior implementations in <em>synonyms/synonyms_provider_{property,field}/includes/*SynonymsBehavior.class.inc</em> files.</p>
 
-<p>Just one last question before we emerge into technical details: is your storage eventually comes from a field? In case it does, you might benefit from reading <a href="&topic:synonyms/synonyms_behavior_implementation_field_based&">this page</a> as it narrates about implementing behaviors based on fields. You can leverage some abstractions from synonyms_provider_field submodule to make your life easier.</p>
+<p>Just one last question before we dive into technical details: is your storage eventually comes from a field? In case it does, you might benefit from reading <a href="&topic:synonyms/synonyms_behavior_implementation_field_based&">this page</a> as it narrates about implementing behaviors based on fields. You can leverage some abstractions from synonyms_provider_field submodule to make your life easier.</p>
 
 <p>In case your storage is not field-based or you just happen to be Chuck Norris, read on! Creating a new implementation pretty much consists of 2 steps:</p>
 <ol>
@@ -23,7 +23,7 @@
 <p>For the purposes of such notification we have the following hook in Synonyms module:</p>
 
 <ul>
-    <li>hook_synonyms_behavior_implementation_info() to collect info from modules about existing behavior implementations</li>
+    <li><em>hook_synonyms_behavior_implementation_info()</em> to collect info from modules about existing behavior implementations</li>
 </ul>
 
 <p>Implementing the hook is highly straight forward, you will just inform the Synonyms module about what behavior implementations your module has to offer for a given behavior, entity type, and bundle. For more details, refer to <b>synonyms.api.php</b> file.</p>

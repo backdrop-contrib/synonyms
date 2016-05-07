@@ -168,7 +168,8 @@ class MySynonymsSynonymsBehavior extends AbstractSynonymsBehavior implements Aut
    */
   public function featuresExportPipe() {
     $pipe = parent::featuresExportPipe();
-    // Add any additional features components your provider depends on.
+    // Here you can add any additional features components your provider
+    // depends on.
     return $pipe;
   }
 }

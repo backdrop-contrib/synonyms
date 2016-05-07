@@ -60,8 +60,8 @@ interface SynonymsBehavior {
    *     synonyms column which you should replace with the actual column name
    *     where the synonyms data for your provider is stored in plain text.
    *   - AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER: to denote
-   *     column that holds entity ID. You are supposed to replace this placeholder
-   *     with actual column name that holds entity ID in your case.
+   *     column that holds entity ID. You are supposed to replace this
+   *     placeholder with actual column name that holds entity ID in your case.
    *   For ease of work with these placeholders, you may extend the
    *   AbstractSynonymsBehavior class and then just invoke the
    *   AbstractSynonymsBehavior->synonymsFindProcessCondition() method, so you

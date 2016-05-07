@@ -10,7 +10,7 @@
 <p>Apparently, on this page we will focus on the 2nd item from the list above. If you implement a behavior for a new field type, then:</p>
 
 <ul>
-    <li>Implement behavior interface for a particular field type. You are encouraged to extend your PHP class from <em>AbstractFieldSynonymsBehavior</em>. It has a few methods that will make your life easy. However, you are nowhere close to be obliged to use that abstract class; only as long as it helps you achieve your goal.</li>
+    <li>Implement behavior interface for a particular field type. You are encouraged to extend your PHP class from <em>AbstractFieldSynonymsBehavior</em>. It has a few methods that will make your life easy. However, you are nowhere close to be obliged to use that abstract class; only as long as it helps you to achieve your goal.</li>
     <li>Notify <em>synonyms_provider_field</em> submodule about availability of a new field type.</li>
 </ul>
 
@@ -25,8 +25,8 @@
 <p>For the purposes of such notification we have the following hooks in <em>synonyms_provider_field</em> submodule:</p>
 
 <ul>
-    <li>hook_synonyms_field_behavior_implementation_info() to collect info from modules about field types available for synonyms behavior implementations</li>
-    <li>hook_synonyms_provider_field_behavior_implementation_info_alter() to alter previously collected info from modules about field types available for synonyms behavior implementations</li>
+    <li><em>hook_synonyms_field_behavior_implementation_info()</em> to collect info from modules about field types available for synonyms behavior implementations</li>
+    <li><em>hook_synonyms_provider_field_behavior_implementation_info_alter()</em> to alter previously collected info from modules about field types available for synonyms behavior implementations</li>
 </ul>
 
 <p>Implementing either of the 2 hooks is highly straight forward, you will just inform the submodule about what field type is exposed to behavior implementation through what PHP class for a given behavior. Then the <em>synonyms_provider_field</em> submodule will analyze what fields are attached to what entity types and will convert this data into the format expected by the core Synonyms module. For more details, refer to <b>synonyms_provider_field.api.php</b> file.</p>

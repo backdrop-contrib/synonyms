@@ -73,7 +73,7 @@ recognized (other modules actually can extend this list):
 * Select - whether synonyms from this provider should be included in the
   synonyms friendly select widgets.
 * Search integration (requires Synonyms Search enabled) - allows your content to
-  be found by synonyms of the terms it references. Your nodes  will be found by
+  be found by synonyms of the terms it references. Your nodes will be found by
   all synonyms that have this behavior enabled.
 
 Therefore, on the Synonyms configuration page you will see a table, where rows
