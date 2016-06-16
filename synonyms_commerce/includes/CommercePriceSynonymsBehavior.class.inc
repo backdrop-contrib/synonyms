@@ -10,10 +10,10 @@
  */
 class CommercePriceSynonymsBehavior extends AbstractFieldSynonymsBehavior {
 
-  public function extractSynonyms($entity) {
+  public function extractSynonyms($entity, $langcode = NULL) {
     $synonyms = array();
 
-    foreach ($this->entityItems($entity) as $item) {
+    foreach ($this->entityItems($entity, $langcode) as $item) {
       $synonyms[] = commerce_currency_format($item['amount'], $item['currency_code'], $entity);
     }
 

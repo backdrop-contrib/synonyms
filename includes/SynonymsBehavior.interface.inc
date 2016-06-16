@@ -17,11 +17,14 @@ interface SynonymsBehavior {
    *
    * @param object $entity
    *   Entity from which to extract synonyms
+   * @param string $langcode
+   *   Language code for which to extract synonyms from the entity, if one is
+   *   known
    *
-   * @return array
-   *   Array of synonyms extracted from $entity
+   * @return array Array of synonyms extracted from $entity
+   * Array of synonyms extracted from $entity
    */
-  public function extractSynonyms($entity);
+  public function extractSynonyms($entity, $langcode = NULL);
 
   /**
    * Add an entity as a synonym into another entity.

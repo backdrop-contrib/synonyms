@@ -687,11 +687,16 @@ function synonyms_get_raw($entity, array $options, $name, $entity_type, &$contex
   $bundle = entity_extract_ids($entity_type, $entity);
   $bundle = $bundle[2];
 
+  $langcode = NULL;
+  if (isset($options['language']) && $options['language']) {
+    $langcode = $options['language']->language;
+  }
+
   $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
   $providers = array();
   foreach ($behavior_implementations as $implementation) {
     if (!in_array($implementation['provider'], $providers)) {
-      $synonyms = array_merge($synonyms, $implementation['object']->extractSynonyms($entity));
+      $synonyms = array_merge($synonyms, $implementation['object']->extractSynonyms($entity, $langcode));
       $providers[] = $implementation['provider'];
     }
   }

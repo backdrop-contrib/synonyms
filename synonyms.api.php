@@ -75,11 +75,14 @@ class MySynonymsSynonymsBehavior extends AbstractSynonymsBehavior implements Aut
    *
    * @param object $entity
    *   Entity from which to extract synonyms
+   * @param string $langcode
+   *   Language code for which to extract synonyms from the entity, if one is
+   *   known
    *
    * @return array
    *   Array of synonyms extracted from $entity
    */
-  public function extractSynonyms($entity) {
+  public function extractSynonyms($entity, $langcode = NULL) {
     $synonyms = array();
 
     // Do something with $entity in order to extract synonyms from it. Add all
