@@ -137,6 +137,7 @@ function synonyms_entity_property_info() {
         'computed' => TRUE,
         'sanitized' => TRUE,
         'raw getter callback' => 'synonyms_get_raw',
+        'translatable' => TRUE,
       );
     }
   }
