@@ -492,7 +492,7 @@ function synonyms_autocomplete_entity_validate($element, &$form_state) {
       foreach ($behavior_implementations as $implementation) {
         $condition = db_and();
         $condition->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $input, 'IN');
-        foreach ($implementation['object']->synonymsFind($condition) as $synonym) {
+        foreach ($implementation['object']->synonymsFind(clone $condition) as $synonym) {
           $value[] = $synonym->entity_id;
           unset($input[drupal_strtolower($synonym->synonym)]);
           if (empty($input)) {
@@ -748,12 +748,16 @@ function synonyms_get_term_synonyms($term) {
  *
  * @param QueryConditionInterface $condition
  *   Object of QueryConditionInterface that specifies conditions by which you
- *   want to find synonyms. When building this condition object, use
- *   AbstractSynonymsBehavior::COLUMN_PLACEHOLDER as a placeholder for real
- *   column name that contains synonym as text. For example, if you were to find
- *   all entities with synonyms that begin with "synonym-come-here" substring,
- *   case insensitive and replacing all spaces in original synonym string by a
- *   dash sign, then you would have to create the following condition object:
+ *   want to find synonyms. When building this condition object, you can use
+ *   the following column placeholders:
+ *   - AbstractSynonymsBehavior::COLUMN_PLACEHOLDER: as a placeholder for real
+ *     column name that contains synonym as text
+ *   - AbstractSynonymsBehavior::COLUMN_ENTITY_ID_PLACEHOLDER: as a placeholder
+ *     for real column name that holds entity ID
+ *   For example, if you were to find all entities with synonyms that begin with
+ *   "synonym-come-here" substring,  case insensitive and replacing all spaces
+ *   in original synonym string by a dash sign, then you would have to create
+ *   the following condition object:
  *   db_and()
  *     ->where("LOWER(REPLACE(" . AbstractSynonymsBehavior::COLUMN_PLACEHOLDER . ", ' ', '-')) LIKE :synonym", array(
  *       ':synonym' => '%' . db_like($some-var) . '%'
@@ -778,7 +782,7 @@ function synonyms_synonyms_find(QueryConditionInterface $condition, $entity_type
 
   $behavior_implementations = synonyms_behavior_get_all_enabled($entity_type, $bundle);
   foreach ($behavior_implementations as $behavior_implementation) {
-    foreach ($behavior_implementation['object']->synonymsFind($condition) as $row) {
+    foreach ($behavior_implementation['object']->synonymsFind(clone $condition) as $row) {
       $rows[] = $row;
     }
   }

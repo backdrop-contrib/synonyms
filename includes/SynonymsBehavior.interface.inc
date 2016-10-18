@@ -68,7 +68,11 @@ interface SynonymsBehavior {
    *   For ease of work with these placeholders, you may extend the
    *   AbstractSynonymsBehavior class and then just invoke the
    *   AbstractSynonymsBehavior->synonymsFindProcessCondition() method, so you
-   *   won't have to worry much about it
+   *   won't have to worry much about it. Important note: if you plan on
+   *   re-using the same $condition object for multiple invocations of this
+   *   method you must pass in here a clone of your condition object, since the
+   *   internal implementation of this method will change the condition (will
+   *   swap the aforementioned placeholders with actual column names)
    *
    * @return Traversable
    *   Traversable result set of found synonyms and entity IDs to which those
