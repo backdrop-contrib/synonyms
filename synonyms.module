@@ -105,6 +105,13 @@ function synonyms_ctools_plugin_directory($owner, $plugin_type) {
           return 'plugins/' . $plugin_type;
       }
       break;
+
+    case 'feeds_tamper':
+      switch ($plugin_type) {
+        case 'plugins':
+          return 'plugins/feeds_tamper';
+      }
+      break;
   }
 }
 
