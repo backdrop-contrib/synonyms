@@ -56,7 +56,7 @@ function synonyms_entity_find_feeds_tamper_form($importer, $element_key, $settin
     '#title' => t('Bundle'),
     '#options' => $bundle_options,
     '#default_value' => isset($settings['bundle']) ? $settings['bundle'] : NULL,
-    '#access' => !empty($bundle_options),
+    '#access' => isset($entity_type['entity keys']['bundle']) && $entity_type['entity keys']['bundle'],
   );
 
   return $form;
