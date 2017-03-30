@@ -391,7 +391,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
   public function setUp($modules = array()) {
     $this->behavior_implementation['behavior'] = 'autocomplete';
     $this->behavior_implementation['settings'] = array(
-      'wording' => '@synonym @field_name @entity',
+      'wording' => '@synonym @field_name @entity @bundle',
     );
     $modules[] = 'synonyms_provider_property';
     parent::setUp($modules);
@@ -651,10 +651,14 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     }
     $provider = synonyms_behavior_implementation_info($behavior_implementation['entity_type'], $behavior_implementation['bundle'], $behavior_implementation['behavior']);
     $provider = $provider[$behavior_implementation['provider']];
+    $entity_ids = entity_extract_ids($behavior_implementation['entity_type'], $entity);
+    $entity_info = entity_get_info($behavior_implementation['entity_type']);
+
     return format_string($behavior_implementation['settings']['wording'], array(
       '@synonym' => $synonym,
       '@entity' => entity_label($behavior_implementation['entity_type'], $entity),
       '@field_name' => drupal_strtolower($provider['label']),
+      '@bundle' => $entity_info['bundles'][$entity_ids[2]]['label'],
     ));
   }
 

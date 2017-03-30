@@ -165,7 +165,9 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
       $synonym_terms = taxonomy_term_load_multiple($synonym_terms);
       foreach ($tags_return as &$v) {
         if (isset($v['synonym'])) {
+          $entity_ids = entity_extract_ids('taxonomy_term', $synonym_terms[$v['tid']]);
           $v['name'] = $synonym_terms[$v['tid']]->name;
+          $v['bundle'] = $entity_ids[2];
         }
       }
     }
@@ -306,7 +308,9 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
       foreach ($matches as $k => $match) {
         if (!isset($match['name']) && isset($match['synonym'])) {
           if (entity_access('view', $field['settings']['target_type'], $synonym_entities[$match['target_id']])) {
+            $entity_ids = entity_extract_ids($field['settings']['target_type'], $synonym_entities[$match['target_id']]);
             $matches[$k]['name'] = entity_label($field['settings']['target_type'], $synonym_entities[$match['target_id']]);
+            $matches[$k]['bundle'] = $entity_ids[2];
           }
           else {
             unset($matches[$k]);
@@ -332,6 +336,7 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
  *   - behavior_implementation: (array) If this entry is matched through a
  *     synonym, put here the behavior implementation array that provided this
  *     match
+ *   - bundle: (string) Bundle of the entity that is suggested in this entry
  * @param string $prefix
  *   Any prefix to be appended to 'name' property of $matches array when
  *   inserting into the autocomplete textfield. Normally it is the already
@@ -344,6 +349,8 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
 function synonyms_autocomplete_format($matches, $prefix) {
   $output = array();
 
+  $entity_info = array();
+
   foreach ($matches as $match) {
     $n = synonyms_autocomplete_escape($match['name']);
     while (isset($output[$prefix . $n])) {
@@ -351,10 +358,15 @@ function synonyms_autocomplete_format($matches, $prefix) {
     }
     $wording = check_plain($match['name']);
     if (isset($match['synonym'])) {
+      if (!isset($entity_info[$match['behavior_implementation']['entity_type']])) {
+        $entity_info[$match['behavior_implementation']['entity_type']] = entity_get_info($match['behavior_implementation']['entity_type']);
+      }
+
       $wording = format_string(filter_xss($match['behavior_implementation']['settings']['wording']), array(
         '@entity' => $match['name'],
         '@synonym' => $match['synonym'],
         '@field_name' => drupal_strtolower($match['behavior_implementation']['label']),
+        '@bundle' => $entity_info[$match['behavior_implementation']['entity_type']]['bundles'][$match['bundle']]['label'],
       ));
     }
     $output[$prefix . $n] = $wording;
