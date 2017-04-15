@@ -485,12 +485,16 @@ function synonyms_autocomplete_entity_validate($element, &$form_state) {
     $field = field_info_field($element['#field_name']);
     $instance = field_info_instance($element['#entity_type'], $field['field_name'], $element['#bundle']);
     $handler = entityreference_get_selection_handler($field, $instance);
-    $matches = $handler->getReferencableEntities($input, 'IN');
 
-    foreach ($matches as $bundle => $entity_ids) {
-      foreach ($entity_ids as $entity_id => $label) {
-        $value[] = $entity_id;
-        unset($input[drupal_strtolower($label)]);
+    foreach ($input as $k => $v) {
+      $matches = $handler->getReferencableEntities($v, '=');
+
+      foreach ($matches as $bundle => $entity_ids) {
+        $entities = entity_load($field['settings']['target_type'], array_keys($entity_ids));
+        foreach ($entity_ids as $entity_id => $label) {
+          $value[] = $entity_id;
+          unset($input[drupal_strtolower(entity_label($field['settings']['target_type'], $entities[$entity_id]))]);
+        }
       }
     }
 
