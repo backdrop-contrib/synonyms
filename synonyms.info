@@ -11,9 +11,6 @@ test_dependencies[] = entityreference:entityreference
 files[] = synonyms.test
 
 files[] = includes/SynonymsBehavior.interface.inc
-files[] = includes/TextSynonymsBehavior.class.inc
-files[] = includes/TaxonomySynonymsBehavior.class.inc
-files[] = includes/EntityReferenceSynonymsBehavior.class.inc
 
 files[] = views/synonyms.views.inc
 files[] = views/synonyms_views_plugin_argument_validate_taxonomy_term.inc
