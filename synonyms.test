@@ -82,6 +82,7 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
     $this->admin = $this->drupalCreateUser(array(
       'administer taxonomy',
       'administer content types',
+      'administer fields',
       'bypass node access',
       'search content',
     ));
