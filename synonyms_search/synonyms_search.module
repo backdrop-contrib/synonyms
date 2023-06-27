@@ -87,7 +87,7 @@ function synonyms_search_node_update_index($node) {
     }
   }
 
-  return empty($output) ? '' : '<strong>' . implode($output, ', ') . '</strong>';
+  return empty($output) ? '' : '<strong>' . implode(',', $output) . '</strong>';
 }
 
 /**
