@@ -8,7 +8,7 @@
 /**
  * Base class for all Synonyms web test cases.
  */
-abstract class SynonymsWebTestCase extends DrupalWebTestCase {
+abstract class SynonymsWebTestCase extends BackdropWebTestCase {
 
   /**
    * Fully loaded user object of an admin user that has required access rights.
@@ -79,7 +79,7 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
     array_unshift($modules, 'synonyms');
     parent::setUp($modules);
 
-    $this->admin = $this->drupalCreateUser(array(
+    $this->admin = $this->backdropCreateUser(array(
       'administer taxonomy',
       'administer content types',
       'administer fields',
@@ -88,7 +88,7 @@ abstract class SynonymsWebTestCase extends DrupalWebTestCase {
     ));
 
     // Creating vocabularies.
-    $this->drupalLogin($this->admin);
+    $this->backdropLogin($this->admin);
     $this->vocabulary = (object) array(
       'name' => $this->randomName(),
       'machine_name' => 'synonyms_test',
@@ -209,7 +209,7 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
 
     $two_synonyms_term = (object) array(
       'vid' => $this->vocabulary->vid,
-      'name'=> $this->randomName(),
+      'name' => $this->randomName(),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $synonym1),
@@ -272,9 +272,9 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     synonyms_behavior_implementation_delete($behavior_implementation);
 
     // Testing the function synonyms_get_term_by_synonym().
-    $tid = synonyms_get_term_by_synonym(drupal_strtoupper($synonym), $this->vocabulary, $term_parent->tid);
+    $tid = synonyms_get_term_by_synonym(backdrop_strtoupper($synonym), $this->vocabulary, $term_parent->tid);
     $this->assertEqual($tid, $term->tid, 'Successfully looked up term by its synonym.');
-    $tid = synonyms_get_term_by_synonym(drupal_strtoupper($name), $this->vocabulary, $term_parent->tid);
+    $tid = synonyms_get_term_by_synonym(backdrop_strtoupper($name), $this->vocabulary, $term_parent->tid);
     $this->assertEqual($tid, $term->tid, 'Successfully looked up term by its name.');
     // Now submitting a non-existing name.
     $tid = synonyms_get_term_by_synonym($parent_synonym, $this->vocabulary, $term_parent->tid);
@@ -284,14 +284,14 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $this->assertEqual($tid, 0, 'synonyms_get_term_by_synonym() returns 0 if the term is not found (due to a field not being engaged in "synonyms" behavior).');
 
     // Testing the function synonyms_add_term_by_synonym().
-    $tid = synonyms_add_term_by_synonym(drupal_strtolower($name), $this->vocabulary, $term_parent->tid);
+    $tid = synonyms_add_term_by_synonym(backdrop_strtolower($name), $this->vocabulary, $term_parent->tid);
     $this->assertEqual($tid, $term->tid, 'Successfully called synonyms_add_term_by_synonym() on an existing title and no new term was created.');
-    $tid = synonyms_add_term_by_synonym(drupal_strtolower($synonym), $this->vocabulary, $term_parent->tid);
+    $tid = synonyms_add_term_by_synonym(backdrop_strtolower($synonym), $this->vocabulary, $term_parent->tid);
     $this->assertEqual($tid, $term->tid, 'Successfully called synonyms_add_term_by_synonym() on an existing synonym and no new term was created.');
-    drupal_static_reset();
+    backdrop_static_reset();
     $tid = synonyms_add_term_by_synonym($parent_synonym, $this->vocabulary, $term_parent->tid);
     $new_term = taxonomy_term_load($tid);
-    $new_term_parents = array_keys(taxonomy_get_parents($new_term->tid));
+    $new_term_parents = array_keys(taxonomy_term_load_parents($new_term->tid));
     $this->assertEqual($parent_synonym, $new_term->name, 'Successfully called synonyms_add_term_by_synonym() on a new title and a new term was created (due to parent restriction).');
     $this->assertNotEqual($new_term->tid, $term_parent->tid, 'Successfully called synonyms_add_term_by_synonym() on a synonym of $parent. New term was created instead of returning $parent\'s tid.');
     $this->assertTrue(in_array($term_parent->tid, $new_term_parents), 'Successfully called synonyms_add_term_by_synonym(). New term is assigned as a child to supplied $parent parameter.');
@@ -310,16 +310,16 @@ class SynonymsSynonymsWebTestCase extends SynonymsWebTestCase {
     $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', $this->randomName());
     $this->assertEqual($entity_id, 0, 'synonyms_get_entity_by_synonym() function returns 0 when fails to look up any entity.');
 
-    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', drupal_strtoupper($term_parent->name));
+    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', backdrop_strtoupper($term_parent->name));
     $this->assertEqual($entity_id, $term_parent->tid, 'synonyms_get_entity_by_synonym() function returns entity ID when a name of an existing entity is supplised.');
 
-    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', drupal_strtoupper($term_parent->name), $another_vocabulary->machine_name);
+    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', backdrop_strtoupper($term_parent->name), $another_vocabulary->machine_name);
     $this->assertEqual($entity_id, 0, 'synonyms_get_entity_by_synonym() returns 0 if an existing entity name is provided, but the search is conducted within another bundle.');
 
-    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', drupal_strtolower($synonym2));
+    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', backdrop_strtolower($synonym2));
     $this->assertEqual($entity_id, $two_synonyms_term->tid, 'synonyms_get_entity_by_synonym() returns entity ID when a synonym of that entity is supplied.');
 
-    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', drupal_strtolower($parent_synonym), $another_vocabulary->machine_name);
+    $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', backdrop_strtolower($parent_synonym), $another_vocabulary->machine_name);
     $this->assertEqual($entity_id, 0, 'synonyms_get_entity_by_synonym() returns 0 if a synonym of an existing entity is supplied, but the search is conducted within another bundle.');
 
     $entity_id = synonyms_get_entity_by_synonym('taxonomy_term', $term_parent->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']);
@@ -405,11 +405,11 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     synonyms_behavior_implementation_save($behavior_implementation);
 
     // Creating a test content type.
-    $this->drupalPost('admin/structure/types/add', array(
+    $this->backdropPost('admin/structure/types/add', array(
       'name' => 'Synonyms Test Content',
       'type' => $this->bundle,
     ), 'Save content type');
-    drupal_static_reset();
+    backdrop_static_reset();
 
     $this->createTerms();
   }
@@ -425,32 +425,32 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     $this->assertAutocompleteMenuPath($this->randomName(), array(), 'Submitting a non existing name into autocomplete path returns empty result.');
     $this->assertAutocompleteMenuPath($this->terms['term1']->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], array(), 'Submitting a value for a field with disabled autocomplete behavior yields empty result.');
 
-    $this->assertAutocompleteMenuPath(drupal_strtoupper(drupal_substr($this->entityLabel($this->terms['term1']), 1, -1)), array(
+    $this->assertAutocompleteMenuPath(backdrop_strtoupper(backdrop_substr($this->entityLabel($this->terms['term1']), 1, -1)), array(
       $this->entityLabel($this->terms['term1']) => $this->entityLabel($this->terms['term1']),
       $this->entityLabel($this->terms['term1_longer_name']) => $this->entityLabel($this->terms['term1_longer_name']),
     ), 'Submitting a name similar to 2 existing term names yields both terms included in the autocomplete response.');
 
-    $this->assertAutocompleteMenuPath($this->entityLabel($this->terms['term1']) . ', ' . drupal_strtoupper(drupal_substr($this->entityLabel($this->terms['term1']), 1, -1)), array(
+    $this->assertAutocompleteMenuPath($this->entityLabel($this->terms['term1']) . ', ' . backdrop_strtoupper(backdrop_substr($this->entityLabel($this->terms['term1']), 1, -1)), array(
       $this->entityLabel($this->terms['term1']) . ', ' . $this->entityLabel($this->terms['term1_longer_name']) => $this->entityLabel($this->terms['term1_longer_name']),
     ), 'Submitting one term already chosen along with a name similar to 2 existing term names yields only suggested a new term.');
 
-    $this->assertAutocompleteMenuPath(drupal_strtoupper(drupal_substr($this->entityLabel($this->terms['no_synonyms']), 1, -1)), array(
+    $this->assertAutocompleteMenuPath(backdrop_strtoupper(backdrop_substr($this->entityLabel($this->terms['no_synonyms']), 1, -1)), array(
       $this->entityLabel($this->terms['no_synonyms']) => $this->entityLabel($this->terms['no_synonyms']),
     ), 'Submitting a name similar to one existing term name into autocomplete path yields that term included.');
 
-    $this->assertAutocompleteMenuPath(drupal_strtolower($this->entityLabel($this->terms['no_synonyms'])) . ', ' . drupal_strtoupper(drupal_substr($this->entityLabel($this->terms['no_synonyms']), 1, -1)), array(), 'Submitting the same term over again into autocomplete path yields no results.');
+    $this->assertAutocompleteMenuPath(backdrop_strtolower($this->entityLabel($this->terms['no_synonyms'])) . ', ' . backdrop_strtoupper(backdrop_substr($this->entityLabel($this->terms['no_synonyms']), 1, -1)), array(), 'Submitting the same term over again into autocomplete path yields no results.');
 
     $this->assertAutocompleteMenuPath($this->entityLabel($this->terms['one_synonym']) . ', ' . $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], array(), 'Submitting a synonym of a term over again into autocomplete path yields no results.');
 
     foreach (array('no_synonyms', 'one_synonym', 'two_synonyms') as $k) {
-      $this->assertAutocompleteMenuPath(drupal_strtolower(drupal_substr($this->entityLabel($this->terms[$k]), 1, -1)), array(
+      $this->assertAutocompleteMenuPath(backdrop_strtolower(backdrop_substr($this->entityLabel($this->terms[$k]), 1, -1)), array(
         $this->entityLabel($this->terms[$k]) => $this->entityLabel($this->terms[$k]),
       ), 'Submitting a name similar to ' . $k . ' term into autocomplete path yields the term included.');
 
       $synonyms = field_get_items($this->behavior_implementation['entity_type'], $this->terms[$k], $this->fields['enabled']['field']['field_name']);
       if (is_array($synonyms)) {
         foreach ($synonyms as $delta => $item) {
-          $this->assertAutocompleteMenuPath(drupal_strtolower(drupal_substr($item['value'], 1, -1)), array(
+          $this->assertAutocompleteMenuPath(backdrop_strtolower(backdrop_substr($item['value'], 1, -1)), array(
             $this->entityLabel($this->terms[$k]) => $this->synonymAutocompleteResult($this->terms[$k], $item['value']),
           ), 'Submitting a name similar to synonym#' . $delta . ' of the term ' . $k . ' into autocomplete path yields the term included.');
         }
@@ -526,27 +526,27 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
    *   reference should be saved)
    */
   public function testAutocompleteTextField() {
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
     $this->assertText($this->entityLabel($this->terms['one_synonym']), 'Submitting a synonym into autocomplete text field results into term being saved.');
 
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => drupal_implode_tags(array($this->entityLabel($this->terms['one_synonym']), $this->entityLabel($this->terms['one_synonym']))),
+      $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => backdrop_implode_tags(array($this->entityLabel($this->terms['one_synonym']), $this->entityLabel($this->terms['one_synonym']))),
     ), 'Save');
     $this->assertUniqueText($this->entityLabel($this->terms['one_synonym']), 'Submitting the same term name twice into autocomplete text field results in saving the term only once in the field.');
 
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => drupal_implode_tags(array($this->entityLabel($this->terms['one_synonym']), $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'])),
+      $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => backdrop_implode_tags(array($this->entityLabel($this->terms['one_synonym']), $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'])),
     ), 'Save');
     $this->assertUniqueText($this->entityLabel($this->terms['one_synonym']), 'Submitting term name and one of its synonyms results in saving the term only once in the field.');
 
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
-      $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => drupal_implode_tags(array($this->terms['two_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->terms['two_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'])),
+      $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => backdrop_implode_tags(array($this->terms['two_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], $this->terms['two_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'])),
     ), 'Save');
     $this->assertUniqueText($this->entityLabel($this->terms['two_synonyms']), 'Submitting 2 different synonyms of the same term results in saving the term only once in the field.');
   }
@@ -569,12 +569,12 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       $this->entityLabel($this->terms['name_similar_synonym']) => $this->entityLabel($this->terms['name_similar_synonym']),
     ), 'Suggestions Size option is respected in autocomplete widget for entity and synonym suggestion entries.');
 
-    $this->assertAutocompleteMenuPath(drupal_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
+    $this->assertAutocompleteMenuPath(backdrop_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
       $this->entityLabel($this->terms['similar_synonyms']) => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Suggestions Size option is respected in autocomplete widget for synonyms suggestion entries.');
 
     $this->assertAutocompleteMenuPath('one_term_name_another_synonym_', array(
-      $this->entityLabel($this->terms['name_another_synonym'])=> $this->entityLabel($this->terms['name_another_synonym']),
+      $this->entityLabel($this->terms['name_another_synonym']) => $this->entityLabel($this->terms['name_another_synonym']),
     ), 'Suggestions Size option is respected in autocomplete widget for the case when there is match by entity name and by synonyms; and preference is given to the match by entity name.');
   }
 
@@ -588,9 +588,9 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       $this->entityLabel($this->terms['name_similar_synonym']) . ' ' => $this->synonymAutocompleteResult($this->terms['name_similar_synonym'], $this->terms['name_similar_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Both term and its synonym are shown when "Suggest only one entry per term" is off.');
 
-    $this->assertAutocompleteMenuPath(drupal_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
+    $this->assertAutocompleteMenuPath(backdrop_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
       $this->entityLabel($this->terms['similar_synonyms']) => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
-      $this->entityLabel($this->terms['similar_synonyms']). ' ' => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value']),
+      $this->entityLabel($this->terms['similar_synonyms']) . ' ' => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value']),
     ), 'Multiple synonyms are shown when "Suggest only one entry per term" is off.');
 
     // Testing enabled "Suggest only one entry per term" setting.
@@ -601,7 +601,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       $this->entityLabel($this->terms['name_similar_synonym']) => $this->entityLabel($this->terms['name_similar_synonym']),
     ), 'Only term is shown and synonym is not shown when "Suggest only one entry per term" is on.');
 
-    $this->assertAutocompleteMenuPath(drupal_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
+    $this->assertAutocompleteMenuPath(backdrop_substr($this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'], 0, 8), array(
       $this->entityLabel($this->terms['similar_synonyms']) => $this->synonymAutocompleteResult($this->terms['similar_synonyms'], $this->terms['similar_synonyms']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Only single synonym is shown when "Suggest only one entry per term" is on.');
   }
@@ -615,10 +615,10 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
    *   Expected output from the autocomplete path. Supply it as an associative
    *   array
    * @param string $message
-   *   Drupal assertion message to be displayed on the rest results page
+   *   Backdrop assertion message to be displayed on the rest results page
    */
   protected function assertAutocompleteMenuPath($input, $standard, $message) {
-    $response = $this->drupalGet($this->reference_instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $this->reference_field['field_name']  . '/' . $this->entity_type . '/' . $this->bundle . '/' . $input);
+    $response = $this->backdropGet($this->reference_instance['widget']['settings']['synonyms_autocomplete_path'] . '/' . $this->reference_field['field_name']  . '/' . $this->entity_type . '/' . $this->bundle . '/' . $input);
     if (!$response) {
       $this->fail($message, 'Autocomplete Menu Path');
       return;
@@ -658,7 +658,7 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
     return format_string($behavior_implementation['settings']['wording'], array(
       '@synonym' => $synonym,
       '@entity' => entity_label($behavior_implementation['entity_type'], $entity),
-      '@field_name' => drupal_strtolower($provider['label']),
+      '@field_name' => backdrop_strtolower($provider['label']),
       '@bundle' => $entity_info['bundles'][$entity_ids[2]]['label'],
     ));
   }
@@ -845,8 +845,8 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       'name' => $this->randomName(),
       'vid' => $another_vocabulary->vid,
       $this->fields['enabled']['field']['field_name'] => array(LANGUAGE_NONE => array(
-        $this->terms['no_synonyms']->name,
-      )),
+          $this->terms['no_synonyms']->name,
+        )),
     );
     taxonomy_term_save($synonym_similar_term);
 
@@ -854,8 +854,8 @@ abstract class AbstractAutocompleteSynonymsWebTestCase extends SynonymsWebTestCa
       'name' => $this->randomName(),
       'vid' => $another_vocabulary->vid,
       $this->fields['enabled']['field']['field_name'] => array(LANGUAGE_NONE => array(
-        $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
-      )),
+          $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        )),
     );
     taxonomy_term_save($synonym_similar_synonym);
   }
@@ -920,7 +920,7 @@ class TaxonomyTermReferenceAutocompleteSynonymsWebTestCase extends AbstractAutoc
     field_update_instance($this->reference_instance);
 
     $new_term_name = $this->terms['no_synonyms']->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'];
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
       'synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
@@ -935,7 +935,7 @@ class TaxonomyTermReferenceAutocompleteSynonymsWebTestCase extends AbstractAutoc
     field_update_instance($this->reference_instance);
 
     $new_term_name = $this->terms['term1']->{$this->fields['disabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'];
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $this->randomName(),
       'synonyms_term_enabled[' . LANGUAGE_NONE . ']' => $this->terms['no_synonyms']->name . ', ' . $new_term_name . ', ' . $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
     ), 'Save');
@@ -974,7 +974,7 @@ class EntityReferenceAutocompleteSynonymsWebTestCase extends AbstractAutocomplet
       'settings' => array(
         'target_type' => 'taxonomy_term',
         'handler_settings' => array(
-          'target_bundles' => drupal_map_assoc(array($this->fields['enabled']['instance']['bundle'])),
+          'target_bundles' => backdrop_map_assoc(array($this->fields['enabled']['instance']['bundle'])),
         ),
       ),
     );
@@ -1045,7 +1045,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
     parent::setUp($modules);
 
     // Creating a test content type.
-    $this->drupalPost('admin/structure/types/add', array(
+    $this->backdropPost('admin/structure/types/add', array(
       'name' => 'Synonyms Test Content',
       'type' => $this->bundle,
     ), 'Save content type');
@@ -1082,7 +1082,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
 
     $element = array(
       '#options' => array(),
-      '#value' => $multiple ? array() : 'nothing',
+      '#value' => $multiple?array() : 'nothing',
     );
 
     if (!$multiple) {
@@ -1101,7 +1101,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
 
         $label = format_string($this->behavior_implementation['settings']['wording'], array(
           '@synonym' => $v['synonym'],
-          '@entity'=> $label,
+          '@entity' => $label,
           '@field_name' => $provider['label'],
         ));
       }
@@ -1155,7 +1155,7 @@ abstract class AbstractSelectSynonymsWebTestCase extends SynonymsWebTestCase {
     $entity_id = entity_extract_ids($this->behavior_implementation['entity_type'], $entity);
     $key = $entity_id[0];
     if ($synonym) {
-      $key .= ':' . drupal_html_class($synonym);
+      $key .= ':' . backdrop_html_class($synonym);
     }
     return $key;
   }
@@ -1302,7 +1302,7 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
           'entity' => $this->terms['child_term'],
           'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
         );
-        $this->drupalGet('node/add/synonyms-test-content');
+        $this->backdropGet('node/add/synonyms-test-content');
         $this->assertSynonymsSelect($options, 'Synonyms select sorting by weight works for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
 
         $this->terms['parent_term']->weight = -1000;
@@ -1341,7 +1341,7 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
           'entity' => $this->terms['normal_term'],
           'synonym' => $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
         );
-        $this->drupalGet('node/add/synonyms-test-content');
+        $this->backdropGet('node/add/synonyms-test-content');
         $this->assertSynonymsSelect($options, 'Synonyms select sorting by weight works after changing weights of terms for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
 
         $this->reference_instance['widget']['settings']['sort'] = 'name';
@@ -1381,7 +1381,7 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
           'entity' => $this->terms['parent_term'],
           'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
         );
-        $this->drupalGet('node/add/synonyms-test-content');
+        $this->backdropGet('node/add/synonyms-test-content');
         $this->assertSynonymsSelect($options, 'Synonyms select sorting by name works for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
       }
     }
@@ -1389,7 +1389,7 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
 
   public function testWidget() {
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -1399,8 +1399,8 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
       ),
     ), 'Save');
 
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' . $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertText($this->terms['parent_term']->name, 'Term is saved when its synonym is submitted through synonyms friendly select for the unlimited cardinality.');
     $this->assertText($this->terms['child_term']->name, 'Term is saved when it is submitted through synonyms friendly select for the unlimited cardinality.');
     $this->assertUniqueText($this->terms['normal_term']->name, 'Term is saved only once when the term and its synonym are submitted through synonyms friendly select for the unlimited cardinality.');
@@ -1442,13 +1442,13 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
       'entity' => $this->terms['child_term'],
       'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
     );
-    $this->drupalGet('node/' . $node->nid . '/edit');
+    $this->backdropGet('node/' . $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with field cardinality more than 1.');
 
     $this->reference_field['cardinality'] = 2;
     field_update_field($this->reference_field);
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -1458,7 +1458,7 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
     ), 'Save');
     $this->assertText('this field cannot hold more than 2 values.', 'Submitting 3 entries into a field with cardinality of 2, that refer to 3 terms, results in a form error.');
 
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -1466,20 +1466,20 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
         $this->synonymSelectKey($this->terms['normal_term'], $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
       ),
     ), 'Save');
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' .  $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' .  $node->nid);
     $this->assertUniqueText($this->terms['parent_term']->name, 'Submitting 3 entries into a field with cardinality of 2, that refer to only 2 terms, results in form getting submitted. Term #1 is saved.');
     $this->assertUniqueText($this->terms['normal_term']->name, 'Term #2 is saved.');
 
     $this->reference_field['cardinality'] = 1;
     field_update_field($this->reference_field);
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Save');
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' . $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertText($this->terms['parent_term']->name, 'Term is saved when its synonym is submitted through synonyms friendly select for the cardinality of 1.');
 
     $options = array();
@@ -1517,13 +1517,13 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
       'entity' => $this->terms['child_term'],
       'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
     );
-    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->backdropGet('node/' .  $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
 
-    $this->drupalPost('node/' . $node->nid . '/edit', array(
+    $this->backdropPost('node/' . $node->nid . '/edit', array(
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->terms['child_term']->tid,
     ), 'Save');
-    $this->drupalGet('node/' . $node->nid);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertNoText($this->terms['parent_term']->name, 'After updating entity the old term is removed.');
     $this->assertText($this->terms['child_term']->name, 'Term is saved when it is submitted through synonyms friendly select for the cardinality of 1.');
 
@@ -1562,12 +1562,12 @@ class TaxonomyTermReferenceSelectSynonymsWebTestCase extends AbstractSelectSynon
       'entity' => $this->terms['child_term'],
       'synonym' => $this->terms['child_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
     );
-    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->backdropGet('node/' .  $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
   }
 
   protected function synonymsSelectOptionPrefix($entity, $synonym = NULL) {
-    $depth = count(taxonomy_get_parents_all($entity->tid)) - 1;
+    $depth = count(taxonomy_term_load_parents_all($entity->tid)) - 1;
     return str_repeat('-', $depth) . parent::synonymsSelectOptionPrefix($entity, $synonym);
   }
 }
@@ -1664,7 +1664,7 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
           'entity' => $this->terms['parent_term'],
           'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
         );
-        $this->drupalGet('node/add/synonyms-test-content');
+        $this->backdropGet('node/add/synonyms-test-content');
         $this->assertSynonymsSelect($options, 'Synonyms select sorting by name works for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
       }
     }
@@ -1672,7 +1672,7 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
 
   public function testWidget() {
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -1682,8 +1682,8 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
       ),
     ), 'Save');
 
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' . $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertText($this->terms['parent_term']->name, 'Term is saved when its synonym is submitted through synonyms friendly select for the unlimited cardinality.');
     $this->assertText($this->terms['child_term']->name, 'Term is saved when it is submitted through synonyms friendly select for the unlimited cardinality.');
     $this->assertUniqueText($this->terms['normal_term']->name, 'Term is saved only once when the term and its synonym are submitted through synonyms friendly select for the unlimited cardinality.');
@@ -1725,13 +1725,13 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
       'entity' => $this->terms['parent_term'],
       'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
     );
-    $this->drupalGet('node/' . $node->nid . '/edit');
+    $this->backdropGet('node/' . $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with field cardinality more than 1.');
 
     $this->reference_field['cardinality'] = 2;
     field_update_field($this->reference_field);
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -1741,7 +1741,7 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
     ), 'Save');
     $this->assertText('this field cannot hold more than 2 values.', 'Submitting 3 entries into a field with cardinality of 2, that refer to 3 terms, results in a form error.');
 
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -1749,20 +1749,20 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
         $this->synonymSelectKey($this->terms['normal_term'], $this->terms['normal_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
       ),
     ), 'Save');
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' .  $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' .  $node->nid);
     $this->assertUniqueText($this->terms['parent_term']->name, 'Submitting 3 entries into a field with cardinality of 2, that refer to only 2 terms, results in form getting submitted. Term #1 is saved.');
     $this->assertUniqueText($this->terms['normal_term']->name, 'Term #2 is saved.');
 
     $this->reference_field['cardinality'] = 1;
     field_update_field($this->reference_field);
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->synonymSelectKey($this->terms['parent_term'], $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Save');
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' . $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertText($this->terms['parent_term']->name, 'Term is saved when its synonym is submitted through synonyms friendly select for the cardinality of 1.');
 
     $options = array();
@@ -1800,13 +1800,13 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
       'entity' => $this->terms['parent_term'],
       'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
     );
-    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->backdropGet('node/' .  $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
 
-    $this->drupalPost('node/' . $node->nid . '/edit', array(
+    $this->backdropPost('node/' . $node->nid . '/edit', array(
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->terms['child_term']->tid,
     ), 'Save');
-    $this->drupalGet('node/' . $node->nid);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertNoText($this->terms['parent_term']->name, 'After updating entity the old term is removed.');
     $this->assertText($this->terms['child_term']->name, 'Term is saved when it is submitted through synonyms friendly select for the cardinality of 1.');
 
@@ -1845,7 +1845,7 @@ class EntityReferenceSelectSynonymsWebTestCase extends AbstractSelectSynonymsWeb
       'entity' => $this->terms['parent_term'],
       'synonym' => $this->terms['parent_term']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][1]['value'],
     );
-    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->backdropGet('node/' .  $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
   }
 }
@@ -1885,8 +1885,8 @@ class TaxonomyTermArgumentSynonymsWebTestCase extends SynonymsWebTestCase {
       'name' => 'Term name',
       'vid' => $this->vocabulary->vid,
       $this->fields['enabled']['field']['field_name'] => array(LANGUAGE_NONE => array(
-        array('value' => 'Synonym of term'),
-      )),
+          array('value' => 'Synonym of term'),
+        )),
     );
     taxonomy_term_save($term);
 
@@ -1904,10 +1904,10 @@ class TaxonomyTermArgumentSynonymsWebTestCase extends SynonymsWebTestCase {
     $result = ctools_context_get_context_from_argument($argument, $this->randomName());
     $this->assertNull($result, 'Term synonym does not look up anything when random string is supplied.');
 
-    $result = ctools_context_get_context_from_argument($argument, drupal_strtolower($term->name));
+    $result = ctools_context_get_context_from_argument($argument, backdrop_strtolower($term->name));
     $this->assertEqual($result->data->tid, $term->tid, 'Term synonym argument correctly looks up the term by its name.');
 
-    $result = ctools_context_get_context_from_argument($argument, drupal_strtolower($term->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']));
+    $result = ctools_context_get_context_from_argument($argument, backdrop_strtolower($term->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']));
     $this->assertEqual($result->data->tid, $term->tid, 'Term synonym argument correctly looks up the term by its synonym.');
 
     $argument['transform'] = TRUE;
@@ -1924,10 +1924,10 @@ class TaxonomyTermArgumentSynonymsWebTestCase extends SynonymsWebTestCase {
     );
     taxonomy_vocabulary_save($another_vocabulary);
     $argument['vids'][$another_vocabulary->vid] = $another_vocabulary->vid;
-    $result = ctools_context_get_context_from_argument($argument, drupal_strtolower($term->name));
+    $result = ctools_context_get_context_from_argument($argument, backdrop_strtolower($term->name));
     $this->assertNull($result, 'Term synonym argument does not look up anything when term name is supplied, but the search is limited to another vocabulary.');
 
-    $result = ctools_context_get_context_from_argument($argument, drupal_strtolower($term->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']));
+    $result = ctools_context_get_context_from_argument($argument, backdrop_strtolower($term->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']));
     $this->assertNull($result, 'Term synonym argument does not look up anything when term synonym is supplied, but the search is limited to another vocabulary.');
   }
 }

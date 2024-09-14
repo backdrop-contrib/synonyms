@@ -8,5 +8,4 @@
 /**
  * Definition of PropertySynonymsBehavior class.
  */
-class PropertySynonymsBehavior extends AbstractPropertySynonymsBehavior {
-}
+class PropertySynonymsBehavior extends AbstractPropertySynonymsBehavior { }

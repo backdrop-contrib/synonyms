@@ -46,9 +46,9 @@ function synonyms_commerce_autocomplete($field_name, $entity_type, $bundle) {
   // entry be either term name itself or one of its synonyms.
   $suggest_only_unique = $widget['suggest_only_unique'];
 
-  $tags_typed = drupal_explode_tags($tags_typed);
-  $tag_last = drupal_strtolower(array_pop($tags_typed));
-  $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
+  $tags_typed = backdrop_explode_tags($tags_typed);
+  $tag_last = backdrop_strtolower(array_pop($tags_typed));
+  $prefix = count($tags_typed)?backdrop_implode_tags($tags_typed) . ', ' : '';
 
   $matches = array();
 
@@ -126,5 +126,5 @@ function synonyms_commerce_autocomplete($field_name, $entity_type, $bundle) {
     }
   }
 
-  drupal_json_output(synonyms_autocomplete_format($matches, $prefix));
+  backdrop_json_output(synonyms_autocomplete_format($matches, $prefix));
 }

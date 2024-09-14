@@ -9,6 +9,5 @@
 /**
  * Interface of search integration synonyms behavior.
  */
-interface SearchSynonymsBehavior extends SynonymsBehavior {
-}
+interface SearchSynonymsBehavior extends SynonymsBehavior { }
 

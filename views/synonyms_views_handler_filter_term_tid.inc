@@ -34,7 +34,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
             $tags[] = entity_label('taxonomy_term', $entity_term);
           }
         }
-        $tags = drupal_implode_tags($tags);
+        $tags = backdrop_implode_tags($tags);
 
         $info = $this->synonyms_field_instance();
 
@@ -48,7 +48,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
         $size = $widget['size'];
 
         $form['value'] = array(
-          '#title' => $this->options['limit'] ? t('Select terms from vocabulary @voc', array('@voc' => $vocabulary->name)) : t('Select terms'),
+          '#title' => $this->options['limit']?t('Select terms from vocabulary @voc', array('@voc' => $vocabulary->name)) : t('Select terms'),
           '#type' => 'textfield',
           '#default_value' => $tags,
           '#autocomplete_path' => $autocomplete_path . '/' . $this->definition['field_name'] . '/' . $info['instance']['entity_type'] . '/' . $info['instance']['bundle'],
@@ -56,8 +56,8 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
           '#auto_creation' => FALSE,
           '#attributes' => array('class' => array('synonyms-autocomplete')),
           '#attached' => array('js' => array(
-            drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
-          )),
+              backdrop_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
+            )),
         );
         break;
 
@@ -93,7 +93,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
 
         $form['value'] = array(
           '#type' => 'select',
-          '#title' => $this->options['limit'] ? t('Select terms from vocabulary @voc', array('@voc' => $vocabulary->name)) : t('Select terms'),
+          '#title' => $this->options['limit']?t('Select terms from vocabulary @voc', array('@voc' => $vocabulary->name)) : t('Select terms'),
           '#multiple' => TRUE,
           '#options' => $options,
           '#size' => min(9, count($options)),
@@ -111,7 +111,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
   function value_validate($form, &$form_state) {
     switch ($this->options['type']) {
       case 'synonyms_autocomplete':
-        $values = drupal_explode_tags($form_state['values']['options']['value']);
+        $values = backdrop_explode_tags($form_state['values']['options']['value']);
         $tids = $this->synonyms_validate_term_strings($form['value'], $values);
 
         if ($tids) {
@@ -139,7 +139,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
         }
 
         $identifier = $this->options['expose']['identifier'];
-        $values = drupal_explode_tags($form_state['values'][$identifier]);
+        $values = backdrop_explode_tags($form_state['values'][$identifier]);
         $tids = $this->synonyms_validate_term_strings($form[$identifier], $values);
 
         if ($tids) {
@@ -192,7 +192,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
       return array();
     }
 
-    $values = array_map('drupal_strtolower', $values);
+    $values = array_map('backdrop_strtolower', $values);
     $missing = array_flip($values);
 
     $tids = array();
@@ -210,7 +210,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
     $query->addTag('term_access');
     $result = $query->execute();
     foreach ($result as $term) {
-      unset($missing[drupal_strtolower($term->name)]);
+      unset($missing[backdrop_strtolower($term->name)]);
       $tids[] = $term->tid;
     }
 
@@ -223,7 +223,7 @@ class synonyms_views_handler_filter_term_tid extends views_handler_filter_term_n
         }
         $synonyms = $behavior_implementation['object']->synonymsFind($condition);
         foreach ($synonyms as $synonym) {
-          $synonym->synonym = drupal_strtolower($synonym->synonym);
+          $synonym->synonym = backdrop_strtolower($synonym->synonym);
           unset($missing[$synonym->synonym]);
           $tids[] = $synonym->entity_id;
         }

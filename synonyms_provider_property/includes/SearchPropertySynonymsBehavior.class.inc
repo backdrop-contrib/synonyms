@@ -9,6 +9,5 @@ if (module_exists('synonyms_search')) {
   /**
    * Definition of SearchPropertySynonymsBehavior class.
    */
-  class SearchPropertySynonymsBehavior extends PropertySynonymsBehavior implements SearchSynonymsBehavior {
-  }
+  class SearchPropertySynonymsBehavior extends PropertySynonymsBehavior implements SearchSynonymsBehavior { }
 }

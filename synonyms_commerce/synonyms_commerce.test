@@ -49,7 +49,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
       'bundle' => $this->bundle,
       'label' => 'Synonym Commerce Autocomplete',
       'settings' => array(
-        'referenceable_types' => drupal_map_assoc(array('product')),
+        'referenceable_types' => backdrop_map_assoc(array('product')),
       ),
       'widget' => array(
         'type' => 'synonyms_commerce_autocomplete',
@@ -65,7 +65,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $name,
-      'sku' => 'a' . drupal_strtolower($this->randomName()),
+      'sku' => 'a' . backdrop_strtolower($this->randomName()),
       $this->fields['disabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $this->randomName()),
@@ -80,7 +80,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $name,
-      'sku' => 'z' . drupal_strtolower($this->randomName()),
+      'sku' => 'z' . backdrop_strtolower($this->randomName()),
       $this->fields['disabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $this->randomName()),
@@ -93,7 +93,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['disabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $this->randomName()),
@@ -106,7 +106,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $this->randomName()),
@@ -124,7 +124,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $this->randomName()),
@@ -144,7 +144,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $name,
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $name . $this->randomName()),
@@ -163,7 +163,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $name . $this->randomName()),
@@ -184,7 +184,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $name . $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['disabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $this->randomName()),
@@ -197,7 +197,7 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product = (object) array(
       'type' => 'product',
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => $name . $this->randomName()),
@@ -220,34 +220,34 @@ class CommerceProductReferenceAutocompleteSynonymsWebTestCase extends AbstractAu
     $product_similar_product = (object) array(
       'type' => $another_product_type['type'],
       'title' => $this->entityLabel($this->terms['no_synonyms']),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
     );
     commerce_product_save($product_similar_product);
 
     $product_similar_synonym = (object) array(
       'type' => $another_product_type['type'],
       'title' => $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
     );
     commerce_product_save($product_similar_synonym);
 
     $synonym_similar_product = (object) array(
       'type' => $another_product_type['type'],
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(LANGUAGE_NONE => array(
-        $this->entityLabel($this->terms['no_synonyms']),
-      )),
+          $this->entityLabel($this->terms['no_synonyms']),
+        )),
     );
     commerce_product_save($synonym_similar_product);
 
     $synonym_similar_synonym = (object) array(
       'type' => $another_product_type['type'],
       'title' => $this->randomName(),
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(LANGUAGE_NONE => array(
-        $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
-      )),
+          $this->terms['one_synonym']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value'],
+        )),
     );
     commerce_product_save($synonym_similar_synonym);
   }
@@ -360,7 +360,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
           'entity' => $this->terms['product3'],
         );
 
-        $this->drupalGet('node/add/synonyms-test-content');
+        $this->backdropGet('node/add/synonyms-test-content');
         $this->assertSynonymsSelect($options, 'Synonyms select sorting by name works for the cardinality of ' . $cardinality_v . ' and ' . $required_v);
       }
     }
@@ -368,7 +368,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
 
   public function testWidget() {
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['product1'], $this->terms['product1']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -378,8 +378,8 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
       ),
     ), 'Save');
 
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' . $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertText($this->terms['product1']->title, 'Product is saved when its synonym is submitted through synonyms friendly select for the unlimited cardinality.');
     $this->assertText($this->terms['product2']->title, 'Product is saved when it is submitted through synonyms friendly select for the unlimited cardinality.');
     $this->assertText($this->terms['product3']->title, 'Product is saved only once when the term and its synonym are submitted through synonyms friendly select for the unlimited cardinality.');
@@ -421,13 +421,13 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
       'entity' => $this->terms['product3'],
       'selected' => TRUE,
     );
-    $this->drupalGet('node/' . $node->nid . '/edit');
+    $this->backdropGet('node/' . $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with field cardinality more than 1.');
 
     $this->reference_field['cardinality'] = 2;
     field_update_field($this->reference_field);
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['product1'], $this->terms['product1']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -437,7 +437,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     ), 'Save');
     $this->assertText('this field cannot hold more than 2 values.', 'Submitting 3 entries into a field with cardinality of 2, that refer to 3 products, results in a form error.');
 
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . '][]' => array(
         $this->synonymSelectKey($this->terms['product1'], $this->terms['product1']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
@@ -445,8 +445,8 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
         $this->synonymSelectKey($this->terms['product2'], $this->terms['product2']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
       ),
     ), 'Save');
-    $node = $this->drupalGetNodeByTitle($name);
-    $this->drupalGet('node/' .  $node->nid);
+    $node = $this->backdropGetNodeByTitle($name);
+    $this->backdropGet('node/' .  $node->nid);
     $this->assertText($this->terms['product1']->title, 'Submitting 3 entries into a field with cardinality of 2, that refer to only 2 products, results in form getting submitted. Product #1 is saved.');
     $this->assertText($this->terms['product2']->title, 'Product #2 is saved.');
 
@@ -458,13 +458,13 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     entity_flush_caches();
 
     $name = $this->randomName();
-    $this->drupalPost('node/add/synonyms-test-content', array(
+    $this->backdropPost('node/add/synonyms-test-content', array(
       'title' => $name,
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->synonymSelectKey($this->terms['product1'], $this->terms['product1']->{$this->fields['enabled']['field']['field_name']}[LANGUAGE_NONE][0]['value']),
     ), 'Save');
-    $node = $this->drupalGetNodeByTitle($name);
+    $node = $this->backdropGetNodeByTitle($name);
 
-    $this->drupalGet('node/' . $node->nid);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertText($this->terms['product1']->title, 'Product is saved when its synonym is submitted through synonyms friendly select for the cardinality of 1.');
 
     $options = array();
@@ -502,13 +502,13 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     $options[] = array(
       'entity' => $this->terms['product3'],
     );
-    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->backdropGet('node/' .  $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
 
-    $this->drupalPost('node/' . $node->nid . '/edit', array(
+    $this->backdropPost('node/' . $node->nid . '/edit', array(
       $this->reference_field['field_name'] . '[' . LANGUAGE_NONE . ']' => $this->terms['product2']->product_id,
     ), 'Save');
-    $this->drupalGet('node/' . $node->nid);
+    $this->backdropGet('node/' . $node->nid);
     $this->assertNoText($this->terms['product1']->title, 'After updating entity the old product is removed.');
     $this->assertText($this->terms['product2']->title, 'Product is saved when it is submitted through synonyms friendly select for the cardinality of 1.');
 
@@ -547,7 +547,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     $options[] = array(
       'entity' => $this->terms['product3'],
     );
-    $this->drupalGet('node/' .  $node->nid . '/edit');
+    $this->backdropGet('node/' .  $node->nid . '/edit');
     $this->assertSynonymsSelect($options, 'Default values are set correctly in the synonyms friendly select widget when working with the field cardinality of 1.');
   }
 
@@ -555,7 +555,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     $this->terms['product1'] = (object) array(
       'type' => $this->behavior_implementation['bundle'],
       'title' => 'Product 1',
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => 'Product 1A' . $this->randomName()),
@@ -568,7 +568,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     $this->terms['product2'] = (object) array(
       'type' => $this->behavior_implementation['bundle'],
       'title' => 'Product 2',
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => 'Product 2Z' . $this->randomName()),
@@ -581,7 +581,7 @@ class CommerceProductReferenceSelectSynonymsWebTestCase extends AbstractSelectSy
     $this->terms['product3'] = (object) array(
       'type' => $this->behavior_implementation['bundle'],
       'title' => 'Product 3',
-      'sku' => drupal_strtolower($this->randomName()),
+      'sku' => backdrop_strtolower($this->randomName()),
       $this->fields['enabled']['field']['field_name'] => array(
         LANGUAGE_NONE => array(
           array('value' => 'Another Product 3A' . $this->randomName()),
@@ -724,7 +724,7 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
       ),
       'found_synonyms' => array(entity_label('commerce_product', $synonym_entity)),
     );
-    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like(drupal_substr(entity_label('commerce_product', $synonym_entity), 1, -1)) . '%', 'LIKE'), 'on a field with a value searching for a string LIKE the %value%');
+    $this->assertSynonymsFind($meta_data, db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like(backdrop_substr(entity_label('commerce_product', $synonym_entity), 1, -1)) . '%', 'LIKE'), 'on a field with a value searching for a string LIKE the %value%');
 
     $meta_data = array();
     $tag = $this->randomName();
@@ -777,7 +777,7 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
     );
     $condition = db_and()
       ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, entity_label('commerce_product', $synonym_entity))
-      ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like(drupal_substr(entity_label('commerce_product', $synonym_entity), 1, -1)) . '%', 'LIKE');
+      ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like(backdrop_substr(entity_label('commerce_product', $synonym_entity), 1, -1)) . '%', 'LIKE');
     $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for value1 and LIKE value1%');
 
     $meta_data = array();
@@ -797,7 +797,7 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
     );
     $condition = db_or()
       ->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, entity_label('commerce_product', $synonym_entity1))
-      ->condition(db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, entity_label('commerce_product', $synonym_entity2))->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like(drupal_substr(entity_label('commerce_product', $synonym_entity2), 1, -1)) . '%', 'LIKE'));
+      ->condition(db_and()->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, entity_label('commerce_product', $synonym_entity2))->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, '%' . db_like(backdrop_substr(entity_label('commerce_product', $synonym_entity2), 1, -1)) . '%', 'LIKE'));
     $this->assertSynonymsFind($meta_data, $condition, 'on a field with 2 values searching for (value1 or (value2 AND value2%))');
 
     $meta_data = array();
@@ -817,8 +817,8 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
     );
     $condition = db_and()
       ->where("REPLACE(" . AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER . ", ' ', '-') = :synonym", array(
-        ':synonym' => entity_label('commerce_product', $synonym_entity2),
-      ));
+      ':synonym' => entity_label('commerce_product', $synonym_entity2),
+    ));
     $this->assertSynonymsFind($meta_data, $condition, "on a field with 2 values, where 2nd value replaces spaces with dashes in the 1st value, searching for REPLACE(column, ' ', '-') = value2");
   }
 
@@ -842,7 +842,7 @@ class CommerceProductReferenceSynonymsBehaviorWebTestCase extends AbstractSynony
     }
     $entity = commerce_product_new($bundle);
     $entity->title = $label;
-    $entity->sku = drupal_html_id($label);
+    $entity->sku = backdrop_html_id($label);
     commerce_product_save($entity);
     return $entity;
   }

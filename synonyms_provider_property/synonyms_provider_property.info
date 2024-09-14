@@ -1,11 +1,7 @@
 name = Entity Property Synonyms Provider
 description = "Provides synonyms from entity properties."
 package = Synonyms
-core = 7.x
+backdrop = 1.x
+type = module
 dependencies[] = synonyms
 
-files[] = includes/AbstractPropertySynonymsBehavior.class.inc
-files[] = includes/PropertySynonymsBehavior.class.inc
-files[] = includes/SearchPropertySynonymsBehavior.class.inc
-
-files[] = synonyms_provider_property.test

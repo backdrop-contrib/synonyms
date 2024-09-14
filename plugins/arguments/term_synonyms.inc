@@ -11,7 +11,10 @@ if (module_exists('taxonomy')) {
     'keyword' => 'term',
     'description' => t('Creates a single taxonomy term from a taxonomy term name or one of its synonyms.'),
     'context' => 'synonyms_term_synonyms_context',
-    'default' => array('breadcrumb' => TRUE, 'transform' => FALSE),
+    'default' => array(
+      'breadcrumb' => TRUE,
+      'transform' => FALSE,
+    ),
     'settings form' => 'synonyms_term_synonyms_settings_form',
     'placeholder form' => 'synonyms_term_synonyms_ctools_argument_placeholder',
     'breadcrumb' => 'synonyms_term_synonyms_breadcrumb',
@@ -27,7 +30,7 @@ function synonyms_term_synonyms_context($arg = NULL, $conf = NULL, $empty = FALS
     return ctools_context_create_empty('entity:taxonomy_term');
   }
 
-  $conf['vids'] = is_array($conf['vids']) ? array_filter($conf['vids']) : array();
+  $conf['vids'] = is_array($conf['vids'])?array_filter($conf['vids']) : array();
 
   if (is_object($arg)) {
     $term = $arg;
@@ -41,8 +44,8 @@ function synonyms_term_synonyms_context($arg = NULL, $conf = NULL, $empty = FALS
       $tids = db_select('taxonomy_term_data', 't')
         ->fields('t', array('tid'))
         ->where("REPLACE(t.name, ' ', '-') = :argument", array(
-          ':argument' => $arg,
-        ));
+        ':argument' => $arg,
+      ));
       if (!empty($conf['vids'])) {
         $tids->condition('t.vid', $conf['vids']);
       }
@@ -50,7 +53,7 @@ function synonyms_term_synonyms_context($arg = NULL, $conf = NULL, $empty = FALS
       $terms = taxonomy_term_load_multiple($tids);
     }
     else {
-      $terms = taxonomy_get_term_by_name($arg);
+      $terms = taxonomy_term_load_multiple_by_name($arg);
     }
 
     if (!empty($conf['vids'])) {
@@ -64,7 +67,7 @@ function synonyms_term_synonyms_context($arg = NULL, $conf = NULL, $empty = FALS
     if (empty($terms)) {
       // We couldn't find the term by name, so we will look it up now by
       // synonyms.
-      $vocabularies = taxonomy_vocabulary_load_multiple(empty($conf['vids']) ? FALSE : $conf['vids']);
+      $vocabularies = taxonomy_vocabulary_load_multiple(empty($conf['vids'])?FALSE : $conf['vids']);
       foreach ($vocabularies as $vocabulary) {
         $condition = db_and();
         if ($conf['transform']) {

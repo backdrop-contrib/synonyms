@@ -6,7 +6,7 @@
  */
 
 /**
- * Implements hook_menu().
+ * Implements hook_menu().().
  */
 function synonyms_commerce_menu() {
   $items = array();
@@ -23,7 +23,7 @@ function synonyms_commerce_menu() {
 }
 
 /**
- * Implements hook_field_widget_info().
+ * Implements hook_field_widget_info().().
  */
 function synonyms_commerce_field_widget_info() {
   return array(
@@ -52,7 +52,7 @@ function synonyms_commerce_field_widget_info() {
 }
 
 /**
- * Implements hook_field_widget_settings_form().
+ * Implements hook_field_widget_settings_form().().
  */
 function synonyms_commerce_field_widget_settings_form($field, $instance) {
   $widget = $instance['widget'];
@@ -60,7 +60,7 @@ function synonyms_commerce_field_widget_settings_form($field, $instance) {
 
   $form = array();
 
-  switch  ($widget['type']) {
+  switch ($widget['type']) {
     case 'synonyms_commerce_autocomplete':
       $form['suggestion_size'] = array(
         '#type' => 'textfield',
@@ -84,7 +84,7 @@ function synonyms_commerce_field_widget_settings_form($field, $instance) {
 }
 
 /**
- * Implements hook_field_widget_form().
+ * Implements hook_field_widget_form().().
  */
 function synonyms_commerce_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $default_value = synonyms_select_default_value($field, $instance, $items);
@@ -94,7 +94,7 @@ function synonyms_commerce_field_widget_form(&$form, &$form_state, $field, $inst
       foreach (commerce_product_load_multiple($default_value) as $product) {
         $default_value_string[] = entity_label('commerce_product', $product);
       }
-      $default_value_string = drupal_implode_tags($default_value_string);
+      $default_value_string = backdrop_implode_tags($default_value_string);
 
       $element += array(
         '#type' => 'textfield',
@@ -105,7 +105,7 @@ function synonyms_commerce_field_widget_form(&$form, &$form_state, $field, $inst
         '#element_validate' => array('synonyms_commerce_autocomplete_validate'),
         '#attached' => array(
           'js' => array(
-            drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
+            backdrop_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js' => array(),
           ),
         ),
         '#attributes' => array(
@@ -146,7 +146,7 @@ function synonyms_commerce_field_widget_form(&$form, &$form_state, $field, $inst
 }
 
 /**
- * Implements hook_synonyms_provider_field_behavior_implementation_info().
+ * Implements hook_synonyms_provider_field_behavior_implementation_info().().
  */
 function synonyms_commerce_synonyms_provider_field_behavior_implementation_info($behavior) {
   switch ($behavior) {
@@ -188,7 +188,7 @@ function synonyms_commerce_product_options_expand($options) {
       }
     }
   }
-  usort($synonyms_options , 'synonyms_select_sort_name');
+  usort($synonyms_options, 'synonyms_select_sort_name');
   return $synonyms_options;
 }
 
@@ -196,7 +196,7 @@ function synonyms_commerce_product_options_expand($options) {
  * Element validate for commerce product synonyms friendly autocomplete widget.
  */
 function synonyms_commerce_autocomplete_validate($element, &$form_state) {
-  $input = drupal_map_assoc(drupal_explode_tags(drupal_strtolower($element['#value'])));
+  $input = backdrop_map_assoc(backdrop_explode_tags(backdrop_strtolower($element['#value'])));
 
   $value = array();
 
@@ -213,7 +213,7 @@ function synonyms_commerce_autocomplete_validate($element, &$form_state) {
     $result = $efq->execute();
     if (isset($result['commerce_product'])) {
       foreach (commerce_product_load_multiple(array_keys($result['commerce_product'])) as $product) {
-        $label = drupal_strtolower(entity_label('commerce_product', $product));
+        $label = backdrop_strtolower(entity_label('commerce_product', $product));
         unset($input[$label]);
         $entity_id = entity_extract_ids('commerce_product', $product);
         $value[] = $entity_id[0];
@@ -227,7 +227,7 @@ function synonyms_commerce_autocomplete_validate($element, &$form_state) {
         $condition->condition(AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER, $input, 'IN');
         foreach ($implementation['object']->synonymsFind($condition) as $synonym) {
           $value[] = $synonym->entity_id;
-          unset($input[drupal_strtolower($synonym->synonym)]);
+          unset($input[backdrop_strtolower($synonym->synonym)]);
           if (empty($input)) {
             break(2);
           }
@@ -245,4 +245,14 @@ function synonyms_commerce_autocomplete_validate($element, &$form_state) {
   }
 
   form_set_value($element, $value, $form_state);
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function synonyms_commerce_autoload_info() {
+  return array(
+    'CommercePriceSynonymsBehavior' => 'includes/CommercePriceSynonymsBehavior.class.inc',
+    'CommerceProductReferenceSynonymsBehavior' => 'includes/CommerceProductReferenceSynonymsBehavior.class.inc',
+  );
 }

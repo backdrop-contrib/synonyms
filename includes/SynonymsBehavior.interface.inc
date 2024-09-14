@@ -58,7 +58,7 @@ interface SynonymsBehavior {
    *
    * @param QueryConditionInterface $condition
    *   Condition that defines what to search for. Apart from normal SQL
-   *   conditions as known in Drupal, it may contain the following placeholders:
+   *   conditions as known in Backdrop, it may contain the following placeholders:
    *   - AbstractSynonymsBehavior::COLUMN_SYNONYM_PLACEHOLDER: to denote
    *     synonyms column which you should replace with the actual column name
    *     where the synonyms data for your provider is stored in plain text.
@@ -99,7 +99,7 @@ interface SynonymsBehavior {
 /**
  * Exception thrown by implementations of SynonymsBehavior interface.
  */
-class SynonymsBehaviorException extends Exception {}
+class SynonymsBehaviorException extends Exception { }
 
 /**
  * Starting point for implementing SynonymsBehavior interface.
@@ -171,11 +171,9 @@ abstract class AbstractSynonymsBehavior implements SynonymsBehavior {
 /**
  * Interface of the autocomplete synonyms behavior.
  */
-interface AutocompleteSynonymsBehavior extends SynonymsBehavior {
-}
+interface AutocompleteSynonymsBehavior extends SynonymsBehavior { }
 
 /**
  * Interface of the synonyms friendly select behavior.
  */
-interface SelectSynonymsBehavior extends SynonymsBehavior {
-}
+interface SelectSynonymsBehavior extends SynonymsBehavior { }

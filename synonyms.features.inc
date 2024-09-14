@@ -6,7 +6,7 @@
  */
 
 /**
- * Implements hook_features_export().
+ * Implements hook_features_export().().
  */
 function synonyms_features_export($data, &$export, $module_name) {
   $pipe = array();
@@ -31,12 +31,12 @@ function synonyms_features_export($data, &$export, $module_name) {
   }
 
   $export['dependencies'][] = 'synonyms';
-  $export['dependencies'] = drupal_map_assoc(array_unique($export['dependencies']));
+  $export['dependencies'] = backdrop_map_assoc(array_unique($export['dependencies']));
   return $pipe;
 }
 
 /**
- * Implements hook_features_export_options().
+ * Implements hook_features_export_options().().
  */
 function synonyms_features_export_options() {
   $options = array();
@@ -70,7 +70,7 @@ function synonyms_features_export_options() {
 }
 
 /**
- * Implements hook_features_export_render().
+ * Implements hook_features_export_render().().
  */
 function synonyms_features_export_render($module_name, $data, $export = NULL) {
   $code = array();
@@ -80,11 +80,15 @@ function synonyms_features_export_render($module_name, $data, $export = NULL) {
     $behavior_implementation = synonyms_behavior_get_all_enabled($entity_type, $bundle, $provider, $behavior);
     $behavior_implementation = reset($behavior_implementation);
     if (is_array($behavior_implementation)) {
-      $behavior_implementation = array_intersect_key($behavior_implementation, drupal_map_assoc(array(
-        'entity_type', 'bundle', 'provider', 'settings', 'behavior',
+      $behavior_implementation = array_intersect_key($behavior_implementation, backdrop_map_assoc(array(
+        'entity_type',
+        'bundle',
+        'provider',
+        'settings',
+        'behavior',
       )));
     }
-    $code[] = "  \$synonyms['{$name}'] = " . features_var_export($behavior_implementation, '  ') .";";
+    $code[] = "  \$synonyms['{$name}'] = " . features_var_export($behavior_implementation, '  ') . ";";
   }
   $code[] = "  return \$synonyms;";
   $code = implode("\n", $code);
@@ -92,7 +96,7 @@ function synonyms_features_export_render($module_name, $data, $export = NULL) {
 }
 
 /**
- * Implements hook_features_revert().
+ * Implements hook_features_revert().().
  */
 function synonyms_features_revert($module_name) {
   $synonyms = module_invoke($module_name, 'default_synonyms');
@@ -102,7 +106,7 @@ function synonyms_features_revert($module_name) {
 }
 
 /**
- * Implements hook_features_rebuild().
+ * Implements hook_features_rebuild().().
  */
 function synonyms_features_rebuild($module_name) {
   $synonyms = module_invoke($module_name, 'default_synonyms');

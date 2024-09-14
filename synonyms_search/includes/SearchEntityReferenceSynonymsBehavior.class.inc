@@ -8,5 +8,4 @@
 /**
  * Definition of SearchEntityReferenceSynonymsBehavior class.
  */
-class SearchEntityReferenceSynonymsBehavior extends EntityReferenceSynonymsBehavior implements SearchSynonymsBehavior {
-}
+class SearchEntityReferenceSynonymsBehavior extends EntityReferenceSynonymsBehavior implements SearchSynonymsBehavior { }

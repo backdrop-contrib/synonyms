@@ -8,5 +8,4 @@
 /**
  * Definition of SearchTaxonomySynonymsBehavior class.
  */
-class SearchTaxonomySynonymsBehavior extends TaxonomySynonymsBehavior implements SearchSynonymsBehavior {
-}
+class SearchTaxonomySynonymsBehavior extends TaxonomySynonymsBehavior implements SearchSynonymsBehavior { }

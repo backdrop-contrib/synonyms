@@ -44,7 +44,7 @@ class TaxonomySynonymsBehavior extends AbstractFieldSynonymsBehavior implements 
           break;
         }
         else {
-          foreach (taxonomy_get_parents_all($synonym_entity->tid) as $parent) {
+          foreach (taxonomy_term_load_parents_all($synonym_entity->tid) as $parent) {
             if ($parent->tid == $setting['parent']) {
               $is_allowed = TRUE;
               break(2);

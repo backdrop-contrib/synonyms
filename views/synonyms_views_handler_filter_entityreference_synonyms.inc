@@ -46,8 +46,9 @@ class synonyms_views_handler_filter_entityreference_synonyms extends views_handl
       case 'synonyms_select':
         // Only "equals" and "not equals" make sense, other operators are rather
         // funky when it comes to IDs and not simple integers.
-        $operators = array_intersect_key($operators, drupal_map_assoc(array(
-          '=', '!=',
+        $operators = array_intersect_key($operators, backdrop_map_assoc(array(
+          '=',
+          '!=',
         )));
         break;
     }
@@ -75,7 +76,7 @@ class synonyms_views_handler_filter_entityreference_synonyms extends views_handl
         case 'synonyms_autocomplete':
           $widget = field_info_widget_settings('synonyms_autocomplete_entity');
           $element['#autocomplete_path'] = $widget['synonyms_autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'];
-          $element['#attached']['js'][drupal_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js'] = array();
+          $element['#attached']['js'][backdrop_get_path('module', 'synonyms') . '/js/synonyms-autocomplete.js'] = array();
           $element['#attributes']['class'][] = 'synonyms-autocomplete';
           break;
 
@@ -138,7 +139,7 @@ class synonyms_views_handler_filter_entityreference_synonyms extends views_handl
  * module) to a single value.
  */
 function synonyms_select_views_entityreference_filter_validate($element, &$form_state) {
-  $value = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
+  $value = backdrop_array_get_nested_value($form_state['values'], $element['#parents']);
   $value = reset($value);
   form_set_value($element, $value, $form_state);
 }

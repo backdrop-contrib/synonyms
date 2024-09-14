@@ -6,7 +6,7 @@
  */
 
 /**
- * Implements hook_ctools_plugin_directory().
+ * Implements hook_ctools_plugin_directory().().
  */
 function synonyms_search_ctools_plugin_directory($owner, $plugin_type) {
   switch ($owner) {
@@ -20,7 +20,7 @@ function synonyms_search_ctools_plugin_directory($owner, $plugin_type) {
 }
 
 /**
- * Implements hook_taxonomy_term_update().
+ * Implements hook_taxonomy_term_update().().
  */
 function synonyms_search_taxonomy_term_update($term) {
   // If we notice at least some change in synonyms of this term, we want to
@@ -33,7 +33,7 @@ function synonyms_search_taxonomy_term_update($term) {
     $current_search_synonyms = array();
     $previous_search_synonyms = array();
 
-    foreach  ($behavior_implementations as $behavior_implementation) {
+    foreach ($behavior_implementations as $behavior_implementation) {
       $current_search_synonyms = array_merge($current_search_synonyms, $behavior_implementation['object']->extractSynonyms($term));
       $previous_search_synonyms = array_merge($previous_search_synonyms, $behavior_implementation['object']->extractSynonyms($term->original));
     }
@@ -46,7 +46,7 @@ function synonyms_search_taxonomy_term_update($term) {
 }
 
 /**
- * Implements hook_node_update_index().
+ * Implements hook_node_update_index().().
  */
 function synonyms_search_node_update_index($node) {
   $output = array();
@@ -91,7 +91,7 @@ function synonyms_search_node_update_index($node) {
 }
 
 /**
- * Implements hook_term_update_index().
+ * Implements hook_term_update_index().().
  */
 function synonyms_search_term_update_index($term) {
   $bundle = taxonomy_vocabulary_load($term->vid);
@@ -106,7 +106,7 @@ function synonyms_search_term_update_index($term) {
 }
 
 /**
- * Implements hook_synonyms_provider_field_behavior_implementation_info().
+ * Implements hook_synonyms_provider_field_behavior_implementation_info().().
  */
 function synonyms_search_synonyms_provider_field_behavior_implementation_info($behavior) {
   switch ($behavior) {
@@ -123,4 +123,17 @@ function synonyms_search_synonyms_provider_field_behavior_implementation_info($b
       break;
   }
   return array();
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function synonyms_search_autoload_info() {
+  return array(
+    'SearchCommerceProductReferenceSynonymsBehavior' => 'includes/SearchCommerceProductReferenceSynonymsBehavior.class.inc',
+    'SearchEntityReferenceSynonymsBehavior' => 'includes/SearchEntityReferenceSynonymsBehavior.class.inc',
+    'SearchSynonymsBehavior' => 'includes/SearchSynonymsBehavior.interface.inc',
+    'SearchTaxonomySynonymsBehavior' => 'includes/SearchTaxonomySynonymsBehavior.class.inc',
+    'SearchTextSynonymsBehavior' => 'includes/SearchTextSynonymsBehavior.class.inc',
+  );
 }

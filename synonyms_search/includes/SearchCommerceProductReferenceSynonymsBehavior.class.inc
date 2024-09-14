@@ -8,5 +8,4 @@
 /**
  * Definition of SearchCommerceProductReferenceSynonymsBehavior class.
  */
-class SearchCommerceProductReferenceSynonymsBehavior extends CommerceProductReferenceSynonymsBehavior implements SearchSynonymsBehavior {
-}
+class SearchCommerceProductReferenceSynonymsBehavior extends CommerceProductReferenceSynonymsBehavior implements SearchSynonymsBehavior { }

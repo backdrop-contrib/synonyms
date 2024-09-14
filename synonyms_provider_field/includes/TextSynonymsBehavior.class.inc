@@ -27,7 +27,7 @@ class TextSynonymsBehavior extends AbstractFieldSynonymsBehavior implements Auto
       case 'text':
         break;
 
-      // We add synonyms for numbers only if $synonym is a number.
+        // We add synonyms for numbers only if $synonym is a number.
       case 'number_integer':
       case 'number_float':
       case 'number_decimal':

@@ -1,13 +1,8 @@
 name = Field Synonyms Provider
 description = "Provides synonyms from entity fields."
 package = Synonyms
-core = 7.x
+backdrop = 1.x
+type = module
 dependencies[] = synonyms
 dependencies[] = field
 
-files[] = includes/AbstractFieldSynonymsBehavior.class.inc
-files[] = includes/EntityReferenceSynonymsBehavior.class.inc
-files[] = includes/TaxonomySynonymsBehavior.class.inc
-files[] = includes/TextSynonymsBehavior.class.inc
-
-files[] = synonyms_provider_field.test

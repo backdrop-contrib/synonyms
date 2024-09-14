@@ -8,5 +8,4 @@
 /**
  * Definition of SearchTextSynonymsBehavior class.
  */
-class SearchTextSynonymsBehavior extends TextSynonymsBehavior implements SearchSynonymsBehavior {
-}
+class SearchTextSynonymsBehavior extends TextSynonymsBehavior implements SearchSynonymsBehavior { }

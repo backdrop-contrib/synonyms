@@ -6,7 +6,7 @@
  */
 
 /**
- * Implements hook_views_data().
+ * Implements hook_views_data().().
  */
 function synonyms_views_data() {
   $data = array();
@@ -34,7 +34,7 @@ function synonyms_views_data() {
 }
 
 /**
- * Implements hook_views_plugins_alter().
+ * Implements hook_views_plugins_alter().().
  */
 function synonyms_views_plugins_alter(&$plugins) {
   if (module_exists('taxonomy')) {
@@ -45,7 +45,7 @@ function synonyms_views_plugins_alter(&$plugins) {
 }
 
 /**
- * Implements hook_field_views_data_alter().
+ * Implements hook_field_views_data_alter().().
  */
 function synonyms_field_views_data_alter(&$result, $field, $module) {
   switch ($field['type']) {

@@ -6,7 +6,7 @@
  */
 
 /**
- * Implements hook_synonyms_behavior_implementation_info().
+ * Implements hook_synonyms_behavior_implementation_info().().
  */
 function synonyms_provider_property_synonyms_behavior_implementation_info($entity_type, $bundle, $behavior) {
   $providers = array();
@@ -94,5 +94,16 @@ function synonyms_provider_property_provider_name($property) {
  * @see synonyms_provider_property_provider_name()
  */
 function synonyms_provider_property_name($provider) {
-  return drupal_substr($provider, drupal_strlen('synonyms_provider_property_'));
+  return backdrop_substr($provider, backdrop_strlen('synonyms_provider_property_'));
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function synonyms_provider_property_autoload_info() {
+  return array(
+    'AbstractPropertySynonymsBehavior' => 'includes/AbstractPropertySynonymsBehavior.class.inc',
+    'PropertySynonymsBehavior' => 'includes/PropertySynonymsBehavior.class.inc',
+    'SearchPropertySynonymsBehavior' => 'includes/SearchPropertySynonymsBehavior.class.inc',
+  );
 }

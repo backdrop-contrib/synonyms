@@ -10,7 +10,7 @@
  * extra spaces on the right until it finds a "free" spot. This JavaScript
  * right-trims the entries in order to cancel out the effect.
  */
-Drupal.behaviors.synonymsAutocompleteWidget = {
+Backdrop.behaviors.synonymsAutocompleteWidget = {
   attach: function (context, settings) {
     $('input.form-autocomplete.synonyms-autocomplete', context).once('synonyms-autocomplete', function () {
       $(this).bind('autocompleteSelect', function() {

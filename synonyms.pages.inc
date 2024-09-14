@@ -67,8 +67,8 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
 
   // The user enters a comma-separated list of tags. We only autocomplete the
   // last tag.
-  $tags_typed = drupal_explode_tags($tags_typed);
-  $tag_last = drupal_strtolower(array_pop($tags_typed));
+  $tags_typed = backdrop_explode_tags($tags_typed);
+  $tag_last = backdrop_strtolower(array_pop($tags_typed));
 
   $tags_typed_tids = array();
   if (!empty($tags_typed)) {
@@ -87,7 +87,7 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
   // - name: (string) name of the suggested term
   // - synonym: (string) optional synonym string that matched this entry
   // - behavior_implementation: (array) optional behavior implementation that
-  //   provided the synonym
+//   provided the synonym
   $tags_return = array();
   if ($tag_last != '') {
     // Part of the criteria for the query come from the field's own settings.
@@ -175,8 +175,8 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
       $tags_return = array_slice($tags_return, 0, $max_suggestions);
     }
   }
-  $prefix = empty($tags_typed) ? '' : drupal_implode_tags($tags_typed) . ', ';
-  drupal_json_output(synonyms_autocomplete_format($tags_return, $prefix));
+  $prefix = empty($tags_typed) ? '' : backdrop_implode_tags($tags_typed) . ', ';
+  backdrop_json_output(synonyms_autocomplete_format($tags_return, $prefix));
 }
 
 /**
@@ -236,9 +236,9 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
   // entry be either term name itself or one of its synonyms.
   $suggest_only_unique = $widget['suggest_only_unique'];
 
-  $tags_typed = drupal_explode_tags($tags_typed);
-  $tag_last = drupal_strtolower(array_pop($tags_typed));
-  $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
+  $tags_typed = backdrop_explode_tags($tags_typed);
+  $tag_last = backdrop_strtolower(array_pop($tags_typed));
+  $prefix = count($tags_typed)?backdrop_implode_tags($tags_typed) . ', ' : '';
 
   $handler = entityreference_get_selection_handler($field, $instance, $entity_type, NULL);
 
@@ -254,7 +254,7 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
   $matches = array();
   if ($tag_last) {
     foreach ($handler->getReferencableEntities($tag_last) as $target_entity_ids) {
-      foreach (array_diff_key($target_entity_ids, drupal_map_assoc($tags_typed_entity_ids)) as $target_id => $label) {
+      foreach (array_diff_key($target_entity_ids, backdrop_map_assoc($tags_typed_entity_ids)) as $target_id => $label) {
         // We do not use the label such as given us by
         // $handler->getReferencableEntities() because some handlers may include
         // more than just plain entity label. However, our validate handler
@@ -332,7 +332,7 @@ function synonyms_autocomplete_entity($field_name, $entity_type, $bundle, $tags_
     }
   }
 
-  drupal_json_output(synonyms_autocomplete_format($matches, $prefix));
+  backdrop_json_output(synonyms_autocomplete_format($matches, $prefix));
 }
 
 /**
@@ -376,7 +376,7 @@ function synonyms_autocomplete_format($matches, $prefix) {
       $wording = format_string(filter_xss_admin($match['behavior_implementation']['settings']['wording']), array(
         '@entity' => $match['name'],
         '@synonym' => $match['synonym'],
-        '@field_name' => drupal_strtolower($match['behavior_implementation']['label']),
+        '@field_name' => backdrop_strtolower($match['behavior_implementation']['label']),
         '@bundle' => $entity_info[$match['behavior_implementation']['entity_type']]['bundles'][$match['bundle']]['label'],
       ));
     }
@@ -389,7 +389,7 @@ function synonyms_autocomplete_format($matches, $prefix) {
  * Default theme implementation for behavior settings form element.
  */
 function theme_synonyms_behaviors_settings($variables) {
-  drupal_add_css(drupal_get_path('module', 'synonyms') . '/synonyms.css');
+  backdrop_add_css(backdrop_get_path('module', 'synonyms') . '/synonyms.css');
 
   $element = &$variables['element'];
 
@@ -413,7 +413,7 @@ function theme_synonyms_behaviors_settings($variables) {
         $row_title = check_plain($element[$behavior][$instance_id]['#title']);
       }
       $row[] = array(
-        'data' => isset($element[$behavior][$instance_id]) ? drupal_render($element[$behavior][$instance_id]) : t('Not implemented'),
+        'data' => isset($element[$behavior][$instance_id])?backdrop_render($element[$behavior][$instance_id]) : t('Not implemented'),
         'class' => array('synonyms-behavior-settings', 'synonyms-behavior-settings-' . $behavior),
       );
     }
@@ -421,7 +421,7 @@ function theme_synonyms_behaviors_settings($variables) {
     $table['rows'][] = $row;
   }
 
-  return '<div id="' . $element['#id'] . '">' . theme('table', $table) . drupal_render_children($element) . '</div>';
+  return '<div id="' . $element['#id'] . '">' . theme('table', $table) . backdrop_render_children($element) . '</div>';
 }
 
 /**
@@ -554,7 +554,7 @@ function synonyms_settings_form_submit($form, &$form_state) {
       }
     }
   }
-  drupal_set_message(t('Synonyms settings have been successfully saved.'));
+  backdrop_set_message(t('Synonyms settings have been successfully saved.'));
   $form_state['redirect'] = array('admin/structure/synonyms');
 }
 

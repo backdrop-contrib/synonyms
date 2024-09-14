@@ -90,11 +90,11 @@ abstract class AbstractSearchSynonymsWebTestCase extends SynonymsWebTestCase {
    *
    * @return array
    *   Array of HTML search results. Each element in this array is a single
-   *   search result represented in HTML code as Drupal search mechanism outputs
+   *   search result represented in HTML code as Backdrop search mechanism outputs
    *   it
    */
   protected function getSearchResults($keyword) {
-    $response = $this->drupalGet('search/' . $this->search_type . '/' . $keyword);
+    $response = $this->backdropGet('search/' . $this->search_type . '/' . $keyword);
     $matches = array();
     preg_match_all('#\<li[^>]+class="search-result"[^>]*\>(.*?)\</li\>#si', $response, $matches);
     return $matches[1];
@@ -102,7 +102,7 @@ abstract class AbstractSearchSynonymsWebTestCase extends SynonymsWebTestCase {
 }
 
 /**
- * Test Synonyms module integration with Drupal search functionality for nodes.
+ * Test Synonyms module integration with Backdrop search functionality for nodes.
  */
 class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
 
@@ -112,7 +112,7 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Synonyms node search integration',
-      'description' => 'Ensure that Synonyms module correctly integrates with the Drupal search functionality.',
+      'description' => 'Ensure that Synonyms module correctly integrates with the Backdrop search functionality.',
       'group' => 'Synonyms',
     );
   }
@@ -125,7 +125,7 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
     parent::setUp($modules);
 
     // Creating a test content type.
-    $this->drupalPost('admin/structure/types/add', array(
+    $this->backdropPost('admin/structure/types/add', array(
       'name' => 'Synonyms Test Content',
       'type' => 'synonyms_test_content',
     ), 'Save content type');
@@ -171,10 +171,10 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
       'type' => 'synonyms_test_content',
       'title' => $this->randomName(),
       'synonyms_term_enabled' => array(LANGUAGE_NONE => array(
-        array('tid' => $this->terms['no_synonyms']->tid),
-        array('tid' => $this->terms['one_synonym']->tid),
-        array('tid' => $this->terms['two_synonyms']->tid),
-      )),
+          array('tid' => $this->terms['no_synonyms']->tid),
+          array('tid' => $this->terms['one_synonym']->tid),
+          array('tid' => $this->terms['two_synonyms']->tid),
+        )),
     );
     node_save($node);
 
@@ -263,10 +263,10 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
       'type' => 'synonyms_test_content',
       'title' => $this->randomName(),
       'synonyms_term_enabled' => array(LANGUAGE_NONE => array(
-        array('target_id' => $this->terms['no_synonyms']->tid),
-        array('target_id' => $this->terms['one_synonym']->tid),
-        array('target_id' => $this->terms['two_synonyms']->tid),
-      )),
+          array('target_id' => $this->terms['no_synonyms']->tid),
+          array('target_id' => $this->terms['one_synonym']->tid),
+          array('target_id' => $this->terms['two_synonyms']->tid),
+        )),
     );
     node_save($node);
 
@@ -327,7 +327,7 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
    * @param $results array
    *   Array of fully loaded nodes that are expected to be on search results
    * @param $message string
-   *   Drupal assertion message to display on test results page
+   *   Backdrop assertion message to display on test results page
    */
   protected function assertSearchResults($keyword, $results, $message) {
     $matches = $this->getSearchResults($keyword);
@@ -347,7 +347,7 @@ class NodeSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
 }
 
 /**
- * Test Synonyms module integration with Drupal search for taxonomy terms.
+ * Test Synonyms module integration with Backdrop search for taxonomy terms.
  */
 class TermSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
 
@@ -370,9 +370,9 @@ class TermSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
   public function setUp($modules = array()) {
     $modules[] = 'term_search';
     parent::setUp($modules);
-    $active_searches = variable_get('search_active_modules', array('node', 'user'));
+    $active_searches = config_get('search.settings', 'search_active_modules');
     $active_searches[] = 'term_search';
-    variable_set('search_active_modules', $active_searches);
+    config_set('search.settings', 'search_active_modules', $active_searches);
   }
 
   /**
@@ -436,7 +436,7 @@ class TermSearchSynonymsWebTestCase extends AbstractSearchSynonymsWebTestCase {
    * @param $results array
    *   Array of fully loaded terms that are expected to be on search results
    * @param $message string
-   *   Drupal assertion message to display on test results page
+   *   Backdrop assertion message to display on test results page
    */
   protected function assertSearchResults($keyword, $results, $message) {
     $matches = $this->getSearchResults($keyword);
