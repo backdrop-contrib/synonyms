@@ -6,7 +6,7 @@
  */
 
 /**
- * Implements hook_schema().().
+ * Implements hook_schema().
  */
 function synonyms_schema() {
   $schema = array();
@@ -58,58 +58,8 @@ function synonyms_schema() {
 }
 
 /**
- * Implements hook_uninstall().().
+ * Implements hook_uninstall().
  */
 function synonyms_uninstall() {
-  // Cleaning all configure variables.
-  $results = db_select('variable', 'var')
-    ->fields('var', array('name'))
-    ->condition('var.name', db_like('synonyms_') . '%', 'LIKE')
-    ->execute();
-  foreach ($results as $var) {
-    // TODO This variable was probably removed in Backdrop without replacement.
-    variable_del($var->name);
-  }
 }
 
-/**
- * Implements hook_requirements().().
- */
-function synonyms_requirements($phase) {
-  $requirements = array();
-  switch ($phase) {
-    case 'update':
-      // Synonyms has changed its dependencies. It used to be Taxonomy and now
-      // it is Entity module. We make sure Entity is enabled otherwise we halt
-      // the update for Synonyms.
-      // TODO: remove this requirement check at some point, when it becomes
-      // obsolete.
-      $t = get_t();
-      $requirements['synonyms_entity_dependency'] = array(
-        'title' => $t('Synonyms depends on Entity'),
-        'description' => $t('Synonyms module depends on Entity module since 4-Mar-2016. At the same time it no longer depends on Taxonomy module while does integrate with the latter. If you do not have installed/enabled Entity module, do so before running updates on Synonyms module. Until Entity module is enabled and updates are executed, Synonyms module performance may degrade and even trigger PHP errors. See <a href="@url">@url</a> for more info.', array(
-          '@url' => 'https://www.drupal.org/node/1194802',
-        )),
-        'value' => module_exists('entity') ? $t('Passed') : $t('Failed'),
-        'severity' => module_exists('entity')?REQUIREMENT_INFO : REQUIREMENT_ERROR,
-      );
-      break;
-  }
-
-  return $requirements;
-}
-
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function synonyms_update_7101() { }
-
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function synonyms_update_7102() { }
-
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function synonyms_update_7103() { }
-
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function synonyms_update_7104() { }
-
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function synonyms_update_7105() { }
