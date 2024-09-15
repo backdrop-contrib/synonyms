@@ -87,14 +87,13 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
   // - name: (string) name of the suggested term
   // - synonym: (string) optional synonym string that matched this entry
   // - behavior_implementation: (array) optional behavior implementation that
-//   provided the synonym
+  //   provided the synonym
   $tags_return = array();
   if ($tag_last != '') {
     // Part of the criteria for the query come from the field's own settings.
     $vocabularies = array();
-    $tmp = taxonomy_vocabulary_get_names();
     foreach ($field['settings']['allowed_values'] as $tree) {
-      $vocabularies[$tmp[$tree['vocabulary']]->vid] = $tree['vocabulary'];
+      $vocabularies[$tree['vocabulary']] = $tree['vocabulary'];
     }
     $vocabularies = taxonomy_vocabulary_load_multiple(array_keys($vocabularies));
 
@@ -110,7 +109,7 @@ function synonyms_autocomplete_taxonomy_term($field_name, $entity_type, $bundle,
     // Select rows that match by term name.
     $result = $query
       ->fields('t', array('tid', 'name'))
-      ->condition('t.vid', array_keys($vocabularies))
+      ->condition('t.vocabulary', array_keys($vocabularies))
       ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
       ->range(0, $max_suggestions)
       ->execute();
