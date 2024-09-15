@@ -505,7 +505,7 @@ function synonyms_settings_form($form, &$form_state, $entity_type, $bundle) {
         '#default_value' => $behavior_settings !== FALSE,
       );
 
-      $settings_form = ctools_plugin_get_function($behavior_info, 'settings form callback');
+      $settings_form = plugin_manager_get_function($behavior_info, 'settings form callback');
       if ($settings_form) {
         $form['settings'][$behavior][$implementation['provider']]['enabled']['#ajax'] = array(
           'callback' => 'synonyms_settings_form_ajax',

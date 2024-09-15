@@ -20,7 +20,7 @@ function synonyms_provider_property_synonyms_behavior_implementation_info($entit
 
       if ($entity_info['base table'] && isset($entity_info['entity keys']['id'])) {
         $entity_keys = array_filter($entity_info['entity keys']);
-        $properties = entity_get_property_info($entity_type);
+        $properties = entity_plus_get_property_info($entity_type);
         $properties = $properties['properties'];
 
         // Label is the label of an entity, therefore it may not be a synonym.

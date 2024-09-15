@@ -68,9 +68,9 @@ function synonyms_permission() {
 }
 
 /**
- * Implements hook_ctools_plugin_type().().
+ * Implements hook_plugin_manager_plugin_type().().
  */
-function synonyms_ctools_plugin_type() {
+function synonyms_plugin_manager_plugin_type() {
   $plugins = array();
 
   $plugins['behavior'] = array(
@@ -88,9 +88,9 @@ function synonyms_ctools_plugin_type() {
 }
 
 /**
- * Implements hook_ctools_plugin_directory().().
+ * Implements hook_plugin_manager_directory().().
  */
-function synonyms_ctools_plugin_directory($owner, $plugin_type) {
+function synonyms_plugin_manager_directory($owner, $plugin_type) {
   switch ($owner) {
     case 'synonyms':
       switch ($plugin_type) {
@@ -99,7 +99,7 @@ function synonyms_ctools_plugin_directory($owner, $plugin_type) {
       }
       break;
 
-    case 'ctools':
+    case 'plugin_manager':
       switch ($plugin_type) {
         case 'arguments':
           return 'plugins/' . $plugin_type;
@@ -898,7 +898,7 @@ function synonyms_views_api() {
  *
  * @param string $behavior
  *   Name of the synonyms behavior whose existing implementations should be
- *   loaded. Basically it has to be name of a ctools plugin of "behavior" type.
+ *   loaded. Basically it has to be name of a plugin of "behavior" type.
  * @param string $entity_type
  *   Behavior implementations of what entity type should be looked up
  * @param string|array $bundle
@@ -915,7 +915,7 @@ function synonyms_views_api() {
  *   Array of loaded existing synonyms behavior implementations. The underlying
  *   array will have the following structure:
  *   - behavior: (string) Behavior name of this behavior implementation, i.e.
- *     name of a ctools plugin of "behavior" type
+ *     name of a plugin of "behavior" type
  *   - entity_type: (string) Entity type to which this behavior implementation
  *     applies
  *   - bundle: (string) Bundle name to which this behavior implementation
@@ -1017,14 +1017,13 @@ function synonyms_behavior_get_all_enabled($entity_type = NULL, $bundle = array(
 }
 
 /**
- * Retrieve information about all cTools plugins of type 'synonyms behavior'.
+ * Retrieve information about all plugins of type 'synonyms behavior'.
  *
  * @return array
  *   Array of information on all available synonyms behavior plugins
  */
 function synonyms_behaviors() {
-  ctools_include('plugins');
-  return ctools_get_plugins('synonyms', 'behavior');
+  return plugin_manager_get_plugins('synonyms', 'behavior');
 }
 
 /**
@@ -1044,7 +1043,7 @@ function synonyms_behaviors() {
  *   - provider: (string) Machine name of the synonyms behavior implementation
  *   - label: (string) Human name of the synonyms behavior implementation
  *   - class: (string) Name of PHP class that implements behavior interface
- *     which is stated in cTools behavior plugin definition
+ *     which is stated in behavior plugin definition
  *   - entity_type: (string) Entity type that corresponds to this synonyms
  *     behavior implementation
  *   - bundle: (string) Bundle that corresponds to this synonyms behavior
@@ -1144,7 +1143,7 @@ function synonyms_behavior_implementation_save($behavior_implementation) {
     case MergeQuery::STATUS_INSERT:
       $behavior_definition = synonyms_behaviors();
       $behavior_definition = $behavior_definition[$behavior_implementation['behavior']];
-      $enabled_callback = ctools_plugin_get_function($behavior_definition, 'enabled callback');
+      $enabled_callback = plugin_manager_get_function($behavior_definition, 'enabled callback');
       if ($enabled_callback) {
         $enabled_callback($behavior_definition, $behavior_implementation);
       }
@@ -1162,7 +1161,7 @@ function synonyms_behavior_implementation_save($behavior_implementation) {
 function synonyms_behavior_implementation_delete($behavior_implementation) {
   $behavior_definition = synonyms_behaviors();
   $behavior_definition = $behavior_definition[$behavior_implementation['behavior']];
-  $disabled_callback = ctools_plugin_get_function($behavior_definition, 'disabled callback');
+  $disabled_callback = plugin_manager_get_function($behavior_definition, 'disabled callback');
   if ($disabled_callback) {
     foreach (synonyms_behavior_get($behavior_implementation['behavior'], $behavior_implementation['entity_type'], $behavior_implementation['bundle'], TRUE) as $enabled_behavior_implementation) {
       if ($enabled_behavior_implementation['provider'] == $behavior_implementation['provider']) {

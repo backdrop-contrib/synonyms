@@ -3,8 +3,9 @@ description = "Provides synonyms feature for Drupal entities."
 package = Synonyms
 backdrop = 1.x
 type = module
-dependencies[] = ctools
 dependencies[] = entity
+dependencies[] = entity_plus
+dependencies[] = plugin_manager
 configure = admin/structure/synonyms
 
 test_dependencies[] = entityreference:entityreference
