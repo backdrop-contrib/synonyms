@@ -1,0 +1,6 @@
+[SynonymsProviderPropertyWebTestCase]
+name = PropertySynonymsBehavior
+description = Ensure that the synonyms module extracts synonyms from entity properties correctly.
+group = Synonyms
+file = synonyms_provider_property.test
+

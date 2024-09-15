@@ -1,0 +1,18 @@
+[AbstractSearchSynonymsWebTestCase]
+name = AbstractSearchSynonymsWebTestCase
+description = AbstractSearchSynonymsWebTestCase
+group = synonyms_search
+file = synonyms_search.test
+
+[NodeSearchSynonymsWebTestCase]
+name = Synonyms node search integration
+description = Ensure that Synonyms module correctly integrates with the Backdrop search functionality.
+group = Synonyms
+file = synonyms_search.test
+
+[TermSearchSynonymsWebTestCase]
+name = Synonyms term search integration
+description = Ensure that Synonyms module correctly integrates with the Term Search module.
+group = Synonyms
+file = synonyms_search.test
+

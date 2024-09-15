@@ -1,0 +1,24 @@
+[AbstractSynonymsProviderFieldWebTestCase]
+name = AbstractSynonymsProviderFieldWebTestCase
+description = AbstractSynonymsProviderFieldWebTestCase
+group = synonyms_provider_field
+file = synonyms_provider_field.test
+
+[TextSynonymsBehaviorWebTestCase]
+name = TextSynonymsBehavior
+description = Ensure that the synonyms module extracts synonyms from text and number fields correctly.
+group = Synonyms
+file = synonyms_provider_field.test
+
+[TaxonomySynonymsBehaviorWebTestCase]
+name = TaxonomySynonymsBehavior
+description = Ensure that the synonyms module extracts synonyms from taxonomy term reference fields correctly.
+group = Synonyms
+file = synonyms_provider_field.test
+
+[EntityReferenceSynonymsBehaviorWebTestCase]
+name = EntityReferenceSynonymsBehavior
+description = Ensure that the synonyms module extracts synonyms from entity reference fields correctly.
+group = Synonyms
+file = synonyms_provider_field.test
+

@@ -1,0 +1,24 @@
+[CommerceProductReferenceAutocompleteSynonymsWebTestCase]
+name = Commerce product reference synonyms autocomplete
+description = Ensure that the "synonym friendly autocomplete" widget works correctly with commerce product reference field type.
+group = Synonyms
+file = synonyms_commerce.test
+
+[CommerceProductReferenceSelectSynonymsWebTestCase]
+name = Commerce product reference synonyms select
+description = Ensure that the "synonym friendly select" widget works correctly with commerce product reference field.
+group = Synonyms
+file = synonyms_commerce.test
+
+[CommerceProductReferenceSynonymsBehaviorWebTestCase]
+name = CommerceProductReferenceSynonymsBehavior
+description = Ensure that the synonyms module extracts synonyms from commerce product reference fields correctly.
+group = Synonyms
+file = synonyms_commerce.test
+
+[CommercePriceSynonymsBehaviorWebTestCase]
+name = CommercePriceSynonymsBehavior
+description = Ensure that the synonyms module extracts synonyms from commerce price fields correctly.
+group = Synonyms
+file = synonyms_commerce.test
+

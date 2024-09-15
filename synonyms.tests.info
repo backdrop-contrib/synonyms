@@ -1,0 +1,54 @@
+[SynonymsWebTestCase]
+name = SynonymsWebTestCase
+description = SynonymsWebTestCase
+group = synonyms
+file = synonyms.test
+
+[SynonymsSynonymsWebTestCase]
+name = Synonyms
+description = Ensure that the general synonyms functionality works correctly.
+group = Synonyms
+file = synonyms.test
+
+[AbstractAutocompleteSynonymsWebTestCase]
+name = AbstractAutocompleteSynonymsWebTestCase
+description = AbstractAutocompleteSynonymsWebTestCase
+group = synonyms
+file = synonyms.test
+
+[TaxonomyTermReferenceAutocompleteSynonymsWebTestCase]
+name = Taxonomy synonyms autocomplete
+description = Ensure that the "synonym friendly autocomplete" widget works correctly with taxonomy term reference field type.
+group = Synonyms
+file = synonyms.test
+
+[EntityReferenceAutocompleteSynonymsWebTestCase]
+name = Entity reference synonyms autocomplete
+description = Ensure that the "synonym friendly autocomplete" widget works correctly with entityreference field type.
+group = Synonyms
+file = synonyms.test
+
+[AbstractSelectSynonymsWebTestCase]
+name = AbstractSelectSynonymsWebTestCase
+description = AbstractSelectSynonymsWebTestCase
+group = synonyms
+file = synonyms.test
+
+[TaxonomyTermReferenceSelectSynonymsWebTestCase]
+name = Taxonomy synonyms select
+description = Ensure that the "synonym friendly select" widget works correctly with taxonomy term reference field.
+group = Synonyms
+file = synonyms.test
+
+[EntityReferenceSelectSynonymsWebTestCase]
+name = Entity reference synonyms select
+description = Ensure that the "synonym friendly select" widget works correctly with entity reference field.
+group = Synonyms
+file = synonyms.test
+
+[TaxonomyTermArgumentSynonymsWebTestCase]
+name = Term synonyms cTools argument plugin
+description = Ensure that synonyms friendly taxonomy terms cTools argument plugin works correctly.
+group = Synonyms
+file = synonyms.test
+
