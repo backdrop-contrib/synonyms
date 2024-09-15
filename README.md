@@ -1,6 +1,10 @@
 Synonyms
 ========
 
+**Please note:
+This port from the Drupal 7 module is not complete nor fully tested. Your 
+help and input would be appreciated!**
+
 The Synonyms module enriches Entities with the notion of synonyms. Currently the
 module provides the following functionality:
 - support of synonyms through Field API. Any field, for which synonyms behavior
@@ -105,5 +109,7 @@ Maintainers
 
 Originally written for Drupal by
 - Bojan Živanović (bojanz) (https://www.drupal.org/u/bojanz)
+- Derek Wright
+- Alexander Trotsenko
 
 This module is seeking additional maintainers.
